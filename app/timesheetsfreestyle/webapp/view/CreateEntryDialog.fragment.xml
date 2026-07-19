@@ -1,0 +1,140 @@
+<core:FragmentDefinition
+  xmlns="sap.m"
+  xmlns:core="sap.ui.core">
+  <Dialog
+    id="createEntryDialog"
+    title="Record Timesheet Entries"
+    contentWidth="65rem">
+    <content>
+      <VBox id="dialogRootVBox" class="sapUiSmallMargin">
+
+        <HBox id="employeeInfoHBox" class="sapUiSmallMarginBottom" wrap="Wrap">
+          <VBox id="employeeIdVBox" class="sapUiTinyMarginEnd">
+            <Label id="employeeIdLabel" text="Employee Id" />
+            <Text id="employeeIdText" text="{entryDialog>/employeeId}" />
+          </VBox>
+          <VBox id="companyCodeVBox" class="sapUiTinyMarginEnd">
+            <Label id="companyCodeLabel" text="Company Code" />
+            <Text id="companyCodeText" text="{entryDialog>/companyCode}" />
+          </VBox>
+        </HBox>
+
+        <Toolbar id="periodNavToolbar" class="sapUiSmallMarginBottom">
+          <Button id="prevPeriodButton" icon="sap-icon://slim-arrow-left" type="Transparent" press="onPrevPeriod" />
+          <Text id="periodLabelText" text="{entryDialog>/periodLabel}" class="sapUiSmallMarginBeginEnd" />
+          <Button id="nextPeriodButton" icon="sap-icon://slim-arrow-right" type="Transparent" press="onNextPeriod" />
+          <ToolbarSpacer id="periodNavSpacer" />
+          <Select id="logModeSelect" selectedKey="{entryDialog>/viewMode}" change="onViewModeChange">
+            <core:Item id="dailyLogItem" key="day" text="Daily Log" />
+            <core:Item id="weeklyLogItem" key="week" text="Weekly Log" />
+          </Select>
+        </Toolbar>
+
+        <!-- DAY VIEW -->
+        <Table
+          id="dayRowsTable"
+          visible="{= ${entryDialog>/viewMode} === 'day' }"
+          items="{entryDialog>/dayRows}"
+          noDataText="No rows yet">
+          <columns>
+            <Column id="dayRowNumCol"><Text id="dayRowNumColTitle" text="S.No" /></Column>
+            <Column id="dayRowCategoryCol"><Text id="dayRowCategoryColTitle" text="Task Type" /></Column>
+            <Column id="dayRowWorkCenterCol"><Text id="dayRowWorkCenterColTitle" text="Work Center" /></Column>
+            <Column id="dayRowRemarksCol"><Text id="dayRowRemarksColTitle" text="Description" /></Column>
+            <Column id="dayRowHoursCol" hAlign="End"><Text id="dayRowHoursColTitle" text="Hour(s)" /></Column>
+            <Column id="dayRowActionCol" />
+          </columns>
+          <items>
+            <ColumnListItem id="dayRowItem">
+              <cells>
+                <Text id="dayRowSNoText" text="{entryDialog>sNo}" />
+                <Select id="dayRowCategorySelect" selectedKey="{entryDialog>category}">
+                  <core:Item id="dayRowCategoryTRAI" key="TRAI" text="TRAI - Training" />
+                  <core:Item id="dayRowCategoryADMI" key="ADMI" text="ADMI - Admin" />
+                  <core:Item id="dayRowCategoryTRAV" key="TRAV" text="TRAV - Travel" />
+                </Select>
+                <Input id="dayRowWorkCenterInput" value="{entryDialog>workCenter}" />
+                <Input id="dayRowRemarksInput" value="{entryDialog>remarks}" placeholder="Enter Description" />
+                <Input id="dayRowHoursInput" value="{entryDialog>hours}" type="Number" textAlign="End" placeholder="0.00" />
+                <Button id="dayRowDeleteButton" icon="sap-icon://delete" type="Transparent" press="onDeleteDayRow" />
+              </cells>
+            </ColumnListItem>
+          </items>
+        </Table>
+        <Button
+          id="addDayRowButton"
+          visible="{= ${entryDialog>/viewMode} === 'day' }"
+          text="Add Row"
+          icon="sap-icon://add"
+          type="Transparent"
+          press="onAddDayRow" />
+
+        <!-- WEEK VIEW -->
+        <Table
+          id="weekRowsTable"
+          visible="{= ${entryDialog>/viewMode} === 'week' }"
+          items="{entryDialog>/weekRows}"
+          noDataText="No rows yet"
+          class="sapUiSmallMarginTop">
+          <columns>
+            <Column id="weekRowCategoryCol"><Text id="weekRowCategoryColTitle" text="Task Type" /></Column>
+            <Column id="weekRowWorkCenterCol"><Text id="weekRowWorkCenterColTitle" text="Work Center" /></Column>
+            <Column id="weekRowRemarksCol"><Text id="weekRowRemarksColTitle" text="Description" /></Column>
+            <Column id="weekDayCol0" hAlign="Center"><Text id="weekDayCol0Title" text="{entryDialog>/weekDates/0/label}" /></Column>
+            <Column id="weekDayCol1" hAlign="Center"><Text id="weekDayCol1Title" text="{entryDialog>/weekDates/1/label}" /></Column>
+            <Column id="weekDayCol2" hAlign="Center"><Text id="weekDayCol2Title" text="{entryDialog>/weekDates/2/label}" /></Column>
+            <Column id="weekDayCol3" hAlign="Center"><Text id="weekDayCol3Title" text="{entryDialog>/weekDates/3/label}" /></Column>
+            <Column id="weekDayCol4" hAlign="Center"><Text id="weekDayCol4Title" text="{entryDialog>/weekDates/4/label}" /></Column>
+            <Column id="weekDayCol5" hAlign="Center"><Text id="weekDayCol5Title" text="{entryDialog>/weekDates/5/label}" /></Column>
+            <Column id="weekDayCol6" hAlign="Center"><Text id="weekDayCol6Title" text="{entryDialog>/weekDates/6/label}" /></Column>
+            <Column id="weekRowActionCol" />
+          </columns>
+          <items>
+            <ColumnListItem id="weekRowItem">
+              <cells>
+                <Select id="weekRowCategorySelect" selectedKey="{entryDialog>category}">
+                  <core:Item id="weekRowCategoryTRAI" key="TRAI" text="TRAI - Training" />
+                  <core:Item id="weekRowCategoryADMI" key="ADMI" text="ADMI - Admin" />
+                  <core:Item id="weekRowCategoryTRAV" key="TRAV" text="TRAV - Travel" />
+                </Select>
+                <Input id="weekRowWorkCenterInput" value="{entryDialog>workCenter}" />
+                <Input id="weekRowRemarksInput" value="{entryDialog>remarks}" placeholder="Enter Description" />
+                <Input id="weekRowDay0Input" value="{entryDialog>hoursByDay/day0}" type="Number" textAlign="Center" placeholder="00:00" />
+                <Input id="weekRowDay1Input" value="{entryDialog>hoursByDay/day1}" type="Number" textAlign="Center" placeholder="00:00" />
+                <Input id="weekRowDay2Input" value="{entryDialog>hoursByDay/day2}" type="Number" textAlign="Center" placeholder="00:00" />
+                <Input id="weekRowDay3Input" value="{entryDialog>hoursByDay/day3}" type="Number" textAlign="Center" placeholder="00:00" />
+                <Input id="weekRowDay4Input" value="{entryDialog>hoursByDay/day4}" type="Number" textAlign="Center" placeholder="00:00" />
+                <Input id="weekRowDay5Input" value="{entryDialog>hoursByDay/day5}" type="Number" textAlign="Center" placeholder="00:00" />
+                <Input id="weekRowDay6Input" value="{entryDialog>hoursByDay/day6}" type="Number" textAlign="Center" placeholder="00:00" />
+                <Button id="weekRowDeleteButton" icon="sap-icon://delete" type="Transparent" press="onDeleteWeekRow" />
+              </cells>
+            </ColumnListItem>
+          </items>
+        </Table>
+        <Button
+          id="addWeekRowButton"
+          visible="{= ${entryDialog>/viewMode} === 'week' }"
+          text="Add Row"
+          icon="sap-icon://add"
+          type="Transparent"
+          press="onAddWeekRow" />
+
+        <HBox
+          id="weekTotalHBox"
+          visible="{= ${entryDialog>/viewMode} === 'week' }"
+          class="sapUiSmallMarginTop"
+          justifyContent="End">
+          <Text id="weekTotalLabel" text="Week Total: " class="sapUiSmallMarginEnd" />
+          <Text id="weekTotalValue" text="{entryDialog>/weekTotal}" />
+        </HBox>
+
+      </VBox>
+    </content>
+    <beginButton>
+      <Button id="submitEntriesButton" text="Submit Entries" type="Emphasized" press="onSubmitEntries" />
+    </beginButton>
+    <endButton>
+      <Button id="cancelDialogButton" text="Cancel" press="onCancelDialog" />
+    </endButton>
+  </Dialog>
+</core:FragmentDefinition>

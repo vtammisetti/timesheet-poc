@@ -1,0 +1,3 @@
+ID,employee_ID,entryDate,workCenter,category,hours,status
+3b1f1b2a-1111-4a11-8888-000000000001,EMP001,2026-07-08,WC-MECH-00012,Maintenance,8.0,Approved
+3b1f1b2a-1111-4a11-8888-000000000002,EMP001,2026-07-08,WC-QA-00008,Maintenance,1.5,Draft

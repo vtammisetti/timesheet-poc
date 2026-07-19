@@ -1,0 +1,30 @@
+.tsHeaderDark {
+  background-color: #354A5F !important;
+}
+
+.tsHeaderDark .sapMTitle,
+.tsHeaderDark .sapMBtn .sapMBtnText,
+.tsHeaderDark .sapMBtnIcon,
+.tsHeaderDark #app--userButton .sapMBtnText {
+  color: #D1E8FF !important;;
+}
+
+.tsFacetBar {
+  background-color: #FFFFFF;
+  border-bottom: 1px solid #E5E5E5;
+  padding: 0.5rem 1rem;
+}
+
+.tsFacetBar .sapMLnk {
+  margin-right: 1.5rem;
+  font-weight: 600;
+}
+
+.tsStatusApproved { color: #107E3E !important; font-weight: 600; }
+.tsStatusRejected { color: #BB0000 !important; font-weight: 600; }
+.tsStatusPending   { color: #E9730C !important; font-weight: 600; }
+.tsStatusDefault   { color: #6A6D70 !important; font-weight: 600; }
+
+#timesheetObjectHeader .sapUiIcon {
+  color: #0A6ED1 !important;
+}

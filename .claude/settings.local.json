@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(nohup env CDS_WATCH_OPEN=false npm run watch-timesheetsfreestyle)",
+      "Bash(echo \"PID:$!\")",
+      "Bash(lsof -iTCP -sTCP:LISTEN -P)"
+    ]
+  }
+}

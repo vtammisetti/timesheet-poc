@@ -1,0 +1,181 @@
+<mvc:View
+  controllerName="timesheetsfreestyle.controller.TimeEntries"
+  xmlns:mvc="sap.ui.core.mvc"
+  xmlns:semantic="sap.m.semantic"
+  xmlns="sap.m">
+  <semantic:FullscreenPage id="timesheetFullscreenPage">
+    <semantic:content>
+
+      <ObjectHeader
+        id="timesheetObjectHeader"
+        title="My Timesheets"
+        icon="sap-icon://timesheet"
+        responsive="true" />
+
+      <VBox id="mainContentVBox" class="sapUiResponsiveContentPadding">
+
+        <Toolbar id="periodToolbar" class="sapUiSmallMarginBottom" style="Clear">
+          <SegmentedButton
+            id="periodSegButton"
+            selectedKey="{myModel>/periodMode}"
+            selectionChange="onPeriodModeChange">
+            <items>
+              <SegmentedButtonItem id="periodDayItem" key="1D" text="1D" />
+              <SegmentedButtonItem id="periodWeekItem" key="1W" text="1W" />
+              <SegmentedButtonItem id="periodMonthItem" key="1M" text="1M" />
+              <SegmentedButtonItem id="periodCustomItem" key="CUSTOM" text="Custom" />
+            </items>
+          </SegmentedButton>
+
+          <Button
+            id="periodPrevButton"
+            icon="sap-icon://slim-arrow-left"
+            type="Transparent"
+            tooltip="Previous period"
+            press="onPeriodPrev"
+            visible="{= ${myModel>/periodMode} !== 'CUSTOM'}"
+            class="sapUiTinyMarginBeginEnd" />
+          <Text
+            id="periodRangeLabel"
+            text="{myModel>/periodLabel}"
+            visible="{= ${myModel>/periodMode} !== 'CUSTOM'}" />
+          <Button
+            id="periodNextButton"
+            icon="sap-icon://slim-arrow-right"
+            type="Transparent"
+            tooltip="Next period"
+            press="onPeriodNext"
+            visible="{= ${myModel>/periodMode} !== 'CUSTOM'}"
+            class="sapUiTinyMarginBegin" />
+          <Button
+            id="periodTodayButton"
+            text="Today"
+            type="Transparent"
+            press="onPeriodToday"
+            visible="{= ${myModel>/periodMode} !== 'CUSTOM'}"
+            class="sapUiSmallMarginBegin" />
+
+          <DateRangeSelection
+            id="dateRangePicker"
+            placeholder="e.g. 2026-07-01 - 2026-07-31"
+            visible="{= ${myModel>/periodMode} === 'CUSTOM'}"
+            class="sapUiTinyMarginEnd" />
+          <Button
+            id="goButton"
+            text="Go"
+            type="Emphasized"
+            press="onGoPress"
+            visible="{= ${myModel>/periodMode} === 'CUSTOM'}" />
+
+          <ToolbarSpacer id="periodToolbarSpacer" />
+        </Toolbar>
+
+        <FacetFilter
+          id="idFacetFilter"
+          type="Simple"
+          showPersonalization="true"
+          showReset="true"
+          showPopoverOKButton="true"
+          reset="onFacetFilterReset"
+          confirm="onFacetFilterConfirm"
+          class="sapUiSmallMarginBottom">
+          <lists>
+            <FacetFilterList
+              id="statusFacetList"
+              title="Status"
+              key="status"
+              mode="MultiSelect"
+              items="{facets>/status}">
+              <items>
+                <FacetFilterItem id="statusFacetItem" text="{facets>text}" key="{facets>key}" />
+              </items>
+            </FacetFilterList>
+            <FacetFilterList
+              id="categoryFacetList"
+              title="Category"
+              key="category"
+              mode="MultiSelect"
+              items="{facets>/category}">
+              <items>
+                <FacetFilterItem id="categoryFacetItem" text="{facets>text}" key="{facets>key}" />
+              </items>
+            </FacetFilterList>
+            <FacetFilterList
+              id="workCenterFacetList"
+              title="Work Center"
+              key="workCenter"
+              mode="MultiSelect"
+              items="{facets>/workCenter}">
+              <items>
+                <FacetFilterItem id="workCenterFacetItem" text="{facets>text}" key="{facets>key}" />
+              </items>
+            </FacetFilterList>
+          </lists>
+        </FacetFilter>
+
+        <Table
+          id="entriesTable"
+          growing="true"
+          growingScrollToLoad="true"
+          items="{myModel>/entries}">
+          <noData>
+            <IllustratedMessage
+              id="entriesEmptyState"
+              illustrationType="{myModel>/emptyIllustrationType}"
+              illustrationSize="Spot"
+              title="{myModel>/emptyTitle}"
+              description="{myModel>/emptyDescription}">
+              
+            </IllustratedMessage>
+          </noData>
+          <headerToolbar>
+            <Toolbar id="entriesTableToolbar">
+              <Title id="tableHeader" text="Entries ({myModel>/entries/length})" />
+              <ToolbarSpacer id="toolbarSpacer1" />
+               <Button id="sortButton" icon="sap-icon://sort" type="Transparent" tooltip="Sort" press="onSortPress" />
+              <Button id="settingsButton" icon="sap-icon://action-settings" type="Transparent" tooltip="Settings" />
+              <SearchField
+                id="searchField"
+                placeholder="Search entries"
+                width="16rem"
+                liveChange="onSearch" />
+             
+              
+            </Toolbar>
+          </headerToolbar>
+          <columns>
+            <Column id="dateColumn"><Text id="dateColumnTitle" text="Date" /></Column>
+            <Column id="workCenterColumn"><Text id="workCenterColumnTitle" text="Work Center" /></Column>
+            <Column id="categoryColumn"><Text id="categoryColumnTitle" text="Category" /></Column>
+            <Column id="hoursColumn" hAlign="End"><Text id="hoursColumnTitle" text="Hours" /></Column>
+            <Column id="startTimeColumn"><Text id="startTimeColumnTitle" text="Start Time" /></Column>
+            <Column id="endTimeColumn"><Text id="endTimeColumnTitle" text="End Time" /></Column>
+            <Column id="remarksColumn"><Text id="remarksColumnTitle" text="Remarks" /></Column>
+            <Column id="statusColumn" hAlign="End"><Text id="statusColumnTitle" text="Status" /></Column>
+          </columns>
+          <items>
+            <ColumnListItem id="entryListItem" type="Navigation">
+              <cells>
+                <ObjectIdentifier id="entryDateCell" title="{ path: 'myModel>entryDate', formatter: '.formatter.formatDate' }" />
+                <Text id="entryWorkCenterCell" text="{myModel>workCenter}" />
+                <Text id="entryCategoryCell" text="{myModel>category}" />
+                <Text id="entryHoursCell" text="{myModel>hours}" />
+                <Text id="entryStartTimeCell" text="{ path: 'myModel>remarks', formatter: '.formatter.parseStartTime' }" />
+                <Text id="entryEndTimeCell" text="{ path: 'myModel>remarks', formatter: '.formatter.parseEndTime' }" />
+                <Text id="entryRemarksCell" text="{ path: 'myModel>remarks', formatter: '.formatter.cleanRemarks' }" />
+                <ObjectStatus
+                  id="entryStatusCell"
+                  text="{ path: 'myModel>status', formatter: '.formatter.formatStatus' }"
+                  state="{ path: 'myModel>status', formatter: '.formatter.statusState' }" />
+              </cells>
+            </ColumnListItem>
+          </items>
+        </Table>
+      </VBox>
+
+    </semantic:content>
+    <semantic:customFooterContent>
+      <Button id="createEntryButton" text="Log Time" type="Emphasized" press="onCreateEntryPress" icon="sap-icon://add"/>
+    </semantic:customFooterContent>
+  </semantic:FullscreenPage>
+</mvc:View>

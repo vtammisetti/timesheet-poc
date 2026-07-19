@@ -1,0 +1,349 @@
+{
+ "meta": {
+  "creator": "cds-dk 9.9.1"
+ },
+ "$version": "2.0",
+ "definitions": {
+  "API_MANAGE_WORKFORCE_TIMESHEET": {
+   "kind": "service",
+   "@cds.external": true,
+   "@m.IsDefaultEntityContainer": "true",
+   "@sap.supported.formats": "atom json xlsx"
+  },
+  "API_MANAGE_WORKFORCE_TIMESHEET.TimeSheetEntryCollection": {
+   "kind": "entity",
+   "@cds.external": true,
+   "@cds.persistence.skip": true,
+   "@sap.label": "TimeSheetEntryCollection",
+   "@sap.updatable": "false",
+   "@sap.deletable": "false",
+   "@sap.content.version": "1",
+   "elements": {
+    "PersonWorkAgreementExternalID": {
+     "key": true,
+     "type": "cds.String",
+     "length": 20,
+     "@sap.unicode": "false",
+     "@sap.label": "Person Work Agreement External ID",
+     "@sap.updatable": "false",
+     "@sap.sortable": "false",
+     "notNull": true
+    },
+    "CompanyCode": {
+     "key": true,
+     "type": "cds.String",
+     "length": 4,
+     "@sap.unicode": "false",
+     "@sap.label": "Company Code",
+     "@sap.updatable": "false",
+     "@sap.sortable": "false",
+     "notNull": true
+    },
+    "TimeSheetRecord": {
+     "key": true,
+     "type": "cds.String",
+     "length": 12,
+     "@sap.unicode": "false",
+     "@sap.label": "Time Sheet Record",
+     "@sap.updatable": "false",
+     "@sap.sortable": "false",
+     "notNull": true
+    },
+    "TimeSheetDataFields": {
+     "type": "API_MANAGE_WORKFORCE_TIMESHEET.TimeSheetDataFields",
+     "notNull": true
+    },
+    "PersonWorkAgreement": {
+     "type": "cds.String",
+     "length": 8,
+     "@sap.unicode": "false",
+     "@sap.label": "Person Work Agreement",
+     "@sap.updatable": "false",
+     "@sap.sortable": "false"
+    },
+    "TimeSheetDate": {
+     "type": "cds.DateTime",
+     "@odata.Type": "Edm.DateTime",
+     "@sap.unicode": "false",
+     "@sap.label": "Time Sheet Date",
+     "@sap.updatable": "false",
+     "@sap.sortable": "false"
+    },
+    "TimeSheetIsReleasedOnSave": {
+     "type": "cds.Boolean",
+     "@sap.unicode": "false",
+     "@sap.label": "Time sheet Is Released On Save",
+     "@sap.updatable": "false",
+     "@sap.sortable": "false",
+     "@sap.filterable": "false"
+    },
+    "TimeSheetPredecessorRecord": {
+     "type": "cds.String",
+     "length": 12,
+     "@sap.unicode": "false",
+     "@sap.label": "Time Sheet Predecessor Record",
+     "@sap.updatable": "false",
+     "@sap.sortable": "false",
+     "@sap.filterable": "false"
+    },
+    "TimeSheetStatus": {
+     "type": "cds.String",
+     "length": 2,
+     "@sap.unicode": "false",
+     "@sap.label": "Time Sheet Status",
+     "@sap.updatable": "false",
+     "@sap.sortable": "false"
+    },
+    "TimeSheetIsExecutedInTestRun": {
+     "type": "cds.Boolean",
+     "@sap.unicode": "false",
+     "@sap.label": "Times Sheet Is Executed In Test Run",
+     "@sap.updatable": "false",
+     "@sap.sortable": "false",
+     "@sap.filterable": "false"
+    },
+    "TimeSheetOperation": {
+     "type": "cds.String",
+     "length": 1,
+     "@sap.unicode": "false",
+     "@sap.label": "Time Sheet Operation",
+     "@sap.updatable": "false",
+     "@sap.sortable": "false",
+     "@sap.filterable": "false"
+    }
+   }
+  },
+  "API_MANAGE_WORKFORCE_TIMESHEET.TimeSheetDataFields": {
+   "kind": "type",
+   "@cds.external": true,
+   "elements": {
+    "ControllingArea": {
+     "type": "cds.String",
+     "length": 4,
+     "@sap.label": "Controlling Area",
+     "@sap.updatable": "false",
+     "@sap.sortable": "false",
+     "@sap.filterable": "false"
+    },
+    "SenderCostCenter": {
+     "type": "cds.String",
+     "length": 10,
+     "@sap.label": "Sender Cost Center",
+     "@sap.updatable": "false",
+     "@sap.sortable": "false",
+     "@sap.filterable": "false"
+    },
+    "ReceiverCostCenter": {
+     "type": "cds.String",
+     "length": 10,
+     "@sap.label": "Receiver Cost Center",
+     "@sap.updatable": "false",
+     "@sap.sortable": "false",
+     "@sap.filterable": "false"
+    },
+    "InternalOrder": {
+     "type": "cds.String",
+     "length": 12,
+     "@sap.label": "Internal Order",
+     "@sap.updatable": "false",
+     "@sap.sortable": "false",
+     "@sap.filterable": "false"
+    },
+    "ActivityType": {
+     "type": "cds.String",
+     "length": 6,
+     "@sap.label": "Activity Type",
+     "@sap.updatable": "false",
+     "@sap.sortable": "false",
+     "@sap.filterable": "false"
+    },
+    "WBSElement": {
+     "type": "cds.String",
+     "length": 24,
+     "@sap.label": "WBS Element",
+     "@sap.updatable": "false",
+     "@sap.sortable": "false",
+     "@sap.filterable": "false"
+    },
+    "WorkItem": {
+     "type": "cds.String",
+     "length": 10,
+     "@sap.label": "Work Item",
+     "@sap.updatable": "false",
+     "@sap.sortable": "false",
+     "@sap.filterable": "false"
+    },
+    "BillingControlCategory": {
+     "type": "cds.String",
+     "length": 8,
+     "@sap.label": "Billing Control Category",
+     "@sap.updatable": "false",
+     "@sap.sortable": "false",
+     "@sap.filterable": "false"
+    },
+    "PurchaseOrder": {
+     "type": "cds.String",
+     "length": 10,
+     "@sap.label": "Purchase Order",
+     "@sap.updatable": "false",
+     "@sap.sortable": "false",
+     "@sap.filterable": "false"
+    },
+    "PurchaseOrderItem": {
+     "type": "cds.String",
+     "length": 5,
+     "@sap.label": "Purchase Order Item",
+     "@sap.updatable": "false",
+     "@sap.sortable": "false",
+     "@sap.filterable": "false"
+    },
+    "TimeSheetTaskType": {
+     "type": "cds.String",
+     "length": 4,
+     "@sap.label": "Time Sheet Task Type",
+     "@sap.updatable": "false",
+     "@sap.sortable": "false",
+     "@sap.filterable": "false"
+    },
+    "TimeSheetTaskLevel": {
+     "type": "cds.String",
+     "length": 8,
+     "@sap.label": "Time Sheet Task Level",
+     "@sap.updatable": "false",
+     "@sap.sortable": "false",
+     "@sap.filterable": "false"
+    },
+    "TimeSheetTaskComponent": {
+     "type": "cds.String",
+     "length": 8,
+     "@sap.label": "Time Sheet Task Component",
+     "@sap.updatable": "false",
+     "@sap.sortable": "false",
+     "@sap.filterable": "false"
+    },
+    "TimeSheetNote": {
+     "type": "cds.String",
+     "@sap.label": "Time Sheet Note",
+     "@sap.updatable": "false",
+     "@sap.sortable": "false",
+     "@sap.filterable": "false"
+    },
+    "RecordedHours": {
+     "type": "cds.Decimal",
+     "precision": 4,
+     "scale": 2,
+     "@sap.label": "Recorded Hours",
+     "@sap.updatable": "false",
+     "@sap.sortable": "false",
+     "@sap.filterable": "false"
+    },
+    "RecordedQuantity": {
+     "type": "cds.Decimal",
+     "precision": 15,
+     "scale": 3,
+     "@sap.label": "Recorded Quantity",
+     "@sap.updatable": "false",
+     "@sap.sortable": "false",
+     "@sap.filterable": "false"
+    },
+    "HoursUnitOfMeasure": {
+     "type": "cds.String",
+     "length": 3,
+     "@sap.label": "Hours Unit Of Measure",
+     "@sap.updatable": "false",
+     "@sap.sortable": "false",
+     "@sap.filterable": "false",
+     "@sap.semantics": "unit-of-measure"
+    },
+    "RejectionReason": {
+     "type": "cds.String",
+     "length": 4,
+     "@sap.label": "Rejection Reason",
+     "@sap.updatable": "false",
+     "@sap.sortable": "false",
+     "@sap.filterable": "false"
+    },
+    "TimeSheetWrkLocCode": {
+     "type": "cds.String",
+     "length": 4,
+     "@sap.label": "Time Sheet Work Location Code",
+     "@sap.updatable": "false",
+     "@sap.sortable": "false",
+     "@sap.filterable": "false"
+    },
+    "TimeSheetOvertimeCategory": {
+     "type": "cds.String",
+     "length": 4,
+     "@sap.label": "Time Sheet Overtime Category",
+     "@sap.updatable": "false",
+     "@sap.sortable": "false",
+     "@sap.filterable": "false"
+    },
+    "SenderPubSecFund": {
+     "type": "cds.String",
+     "length": 10,
+     "@sap.label": "Sender Fund",
+     "@sap.updatable": "false",
+     "@sap.sortable": "false",
+     "@sap.filterable": "false"
+    },
+    "SendingPubSecFunctionalArea": {
+     "type": "cds.String",
+     "length": 16,
+     "@sap.label": "Sender Functional Area",
+     "@sap.updatable": "false",
+     "@sap.sortable": "false",
+     "@sap.filterable": "false"
+    },
+    "SenderPubSecGrant": {
+     "type": "cds.String",
+     "length": 20,
+     "@sap.label": "Sender Grant",
+     "@sap.updatable": "false",
+     "@sap.sortable": "false",
+     "@sap.filterable": "false"
+    },
+    "SenderPubSecBudgetPeriod": {
+     "type": "cds.String",
+     "length": 10,
+     "@sap.label": "Sender Budget Period",
+     "@sap.updatable": "false",
+     "@sap.sortable": "false",
+     "@sap.filterable": "false"
+    },
+    "ReceiverPubSecFund": {
+     "type": "cds.String",
+     "length": 10,
+     "@sap.label": "Receiver Fund",
+     "@sap.updatable": "false",
+     "@sap.sortable": "false",
+     "@sap.filterable": "false"
+    },
+    "ReceiverPubSecFuncnlArea": {
+     "type": "cds.String",
+     "length": 16,
+     "@sap.label": "Receivier Functiona Area",
+     "@sap.updatable": "false",
+     "@sap.sortable": "false",
+     "@sap.filterable": "false"
+    },
+    "ReceiverPubSecGrant": {
+     "type": "cds.String",
+     "length": 20,
+     "@sap.label": "Receiver Grant",
+     "@sap.updatable": "false",
+     "@sap.sortable": "false",
+     "@sap.filterable": "false"
+    },
+    "ReceiverPubSecBudgetPeriod": {
+     "type": "cds.String",
+     "length": 10,
+     "@sap.label": "Receiver Budget Period",
+     "@sap.updatable": "false",
+     "@sap.sortable": "false",
+     "@sap.filterable": "false"
+    }
+   }
+  }
+ }
+}

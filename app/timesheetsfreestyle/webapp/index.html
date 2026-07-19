@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Timesheet freestyle</title>
+    <style>
+        html, body, body > div, #container, #container-uiarea {
+            height: 100%;
+        }
+
+        #appSplashScreen {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1.25rem;
+            background-color: #354A5F;
+            transition: opacity 0.4s ease-out;
+        }
+
+        #appSplashScreen.tsSplashHidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .tsSplashLogo {
+            width: 4rem;
+            height: 4rem;
+            border-radius: 0.75rem;
+            background-color: #0A6ED1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #FFFFFF;
+            font-size: 1.75rem;
+            font-weight: 700;
+            font-family: "72", "72full", Arial, Helvetica, sans-serif;
+        }
+
+        .tsSplashTitle {
+            color: #FFFFFF;
+            font-size: 1.25rem;
+            font-weight: 600;
+            font-family: "72", "72full", Arial, Helvetica, sans-serif;
+            letter-spacing: 0.02em;
+        }
+
+        .tsSplashSpinner {
+            width: 2rem;
+            height: 2rem;
+            border-radius: 50%;
+            border: 3px solid rgba(255, 255, 255, 0.25);
+            border-top-color: #D1E8FF;
+            animation: tsSplashSpin 0.8s linear infinite;
+        }
+
+        @keyframes tsSplashSpin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+    <script
+        id="sap-ui-bootstrap"
+        src="https://sapui5.hana.ondemand.com/1.150.0/resources/sap-ui-core.js"
+        data-sap-ui-theme="sap_fiori_3"
+        data-sap-ui-resource-roots='{
+            "timesheetsfreestyle": "./"
+        }'
+        data-sap-ui-on-init="module:sap/ui/core/ComponentSupport"
+        data-sap-ui-compat-version="edge"
+        data-sap-ui-async="true"
+        data-sap-ui-frame-options="trusted"
+    ></script>
+    ><script>
+        
+    </script>
+</head>
+<body class="sapUiBody sapUiSizeCompact" id="content">
+    <div id="appSplashScreen" aria-live="polite" aria-label="Loading application">
+        
+        <div class="tsSplashTitle">MyTimesheet</div>
+        <div class="tsSplashSpinner"></div>
+    </div>
+    <div
+        data-sap-ui-component
+        data-name="timesheetsfreestyle"
+        data-id="container"
+        data-settings='{"id" : "timesheetsfreestyle"}'
+        data-handle-validation="true"
+    ></div>
+    <script>
+        // Fallback: guarantee the splash never blocks the app if the
+        // App controller hook below doesn't fire for some reason.
+        window.setTimeout(function () {
+            var oSplash = document.getElementById("appSplashScreen");
+            if (oSplash) {
+                oSplash.classList.add("tsSplashHidden");
+            }
+        }, 15000);
+    </script>
+</body>
+</html>

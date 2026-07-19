@@ -1,0 +1,62 @@
+<mvc:View
+  controllerName="timesheetsfreestyle.controller.App"
+  xmlns:tnt="sap.tnt"
+  xmlns:mvc="sap.ui.core.mvc"
+  displayBlock="true"
+  xmlns="sap.m">
+  <tnt:ToolPage id="app" class="tsToolPage">
+    <tnt:header>
+      <tnt:ToolHeader class="tsHeaderDark">
+        <Button
+          id="sideNavigationToggleButton"
+          icon="sap-icon://menu2"
+          type="Transparent"
+          press="onSideNavButtonPress"
+          tooltip="Collapse/Expand Menu">
+          <layoutData>
+            <OverflowToolbarLayoutData priority="NeverOverflow" />
+          </layoutData>
+        </Button>
+        <ToolbarSpacer />
+        <Title text="Timesheet App" level="H2" />
+        <ToolbarSpacer />
+        <Button
+          id="refreshButton"
+          icon="sap-icon://synchronize"
+          type="Transparent"
+          press="onRefreshApp"
+          tooltip="Refresh">
+          <layoutData>
+            <OverflowToolbarLayoutData closeOverflowOnInteraction="false" />
+          </layoutData>
+        </Button>
+        <Button
+          id="userButton"
+          text="{userData>/FirstName} {userData>/SecondName}"
+          type="Transparent"
+          press="onUserNamePress">
+          <layoutData>
+            <OverflowToolbarLayoutData closeOverflowOnInteraction="false" />
+          </layoutData>
+        </Button>
+      </tnt:ToolHeader>
+    </tnt:header>
+
+    <tnt:sideContent>
+      <tnt:SideNavigation id="sideNav" expanded="true" selectedKey="myTimesheets" itemSelect="onNavItemSelect">
+        <tnt:NavigationList>
+          <tnt:NavigationListItem text="My Timesheets" key="myTimesheets" icon="sap-icon://timesheet" />
+        </tnt:NavigationList>
+        <tnt:fixedItem>
+          <tnt:NavigationList>
+            <tnt:NavigationListItem text="Version 1.0.0" key="version" enabled="false" />
+          </tnt:NavigationList>
+        </tnt:fixedItem>
+      </tnt:SideNavigation>
+    </tnt:sideContent>
+
+    <tnt:mainContents>
+      <mvc:XMLView viewName="timesheetsfreestyle.view.TimeEntries" height="100%" />
+    </tnt:mainContents>
+  </tnt:ToolPage>
+</mvc:View>

@@ -1,0 +1,41 @@
+{
+  "name": "timesheet-poc",
+  "version": "1.0.0",
+  "dependencies": {
+    "@sap-cloud-sdk/connectivity": "^4",
+    "@sap-cloud-sdk/http-client": "^4",
+    "@sap-cloud-sdk/resilience": "^4",
+    "@sap/cds": "^9",
+    "axios": "^1.18.1"
+  },
+  "devDependencies": {
+    "@cap-js/sqlite": "^2.4",
+    "cds-plugin-ui5": "^0.17.0"
+  },
+  "scripts": {
+    "start": "cds-serve",
+    "watch-timesheetsapp": "cds watch --open timesheetsapp/index.html?sap-ui-xx-viewCache=false --livereload false",
+    "watch-s4timesheetsapp": "cds watch --open s4timesheet.s4timesheetsapp/index.html?sap-ui-xx-viewCache=false --livereload false",
+    "watch-timesheetsfreestyle": "cds watch --open timesheetsfreestyle/index.html?sap-ui-xx-viewCache=false --livereload false"
+  },
+  "private": true,
+  "workspaces": [
+    "app/*"
+  ],
+  "sapux": [
+    "app/timesheetsapp",
+    "app/s4timesheetsapp"
+  ],
+  "cds": {
+    "requires": {
+      "API_MANAGE_WORKFORCE_TIMESHEET": {
+        "kind": "odata-v2",
+        "model": "srv/external/API_MANAGE_WORKFORCE_TIMESHEET",
+        "credentials": {
+          "url": "https://my432407-api.s4hana.cloud.sap:443/sap/opu/odata/sap/API_MANAGE_WORKFORCE_TIMESHEET",
+          "authentication": "BasicAuthentication"
+        }
+      }
+    }
+  }
+}
