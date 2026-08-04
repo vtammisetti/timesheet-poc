@@ -54,9 +54,15 @@ sap.ui.define([
     // employee's local drafts, which never touch the backend at all.
     syncFromSharedEntries: function () {
       var oUser = this.getOwnerComponent().getCurrentUser();
+      var sFromDate = this._sActiveFromDate;
+      var sToDate = this._sActiveToDate;
       var aRealEntries = this.getOwnerComponent().getModel("timesheetData").getProperty("/entries") || [];
       var aDrafts = this.getOwnerComponent().getDraftEntries().filter(function (d) {
-        return d.employeeId === oUser.employeeId;
+        if (d.employeeId !== oUser.employeeId) {
+          return false;
+        }
+        var sEntryDate = (d.entryDate || "").slice(0, 10);
+        return (!sFromDate || sEntryDate >= sFromDate) && (!sToDate || sEntryDate <= sToDate);
       });
       var aCombined = aRealEntries.concat(aDrafts);
 
@@ -173,6 +179,9 @@ sap.ui.define([
     },
 
     _loadEntries: function (sEmployeeId, sFromDate, sToDate) {
+      this._sActiveFromDate = sFromDate;
+      this._sActiveToDate = sToDate;
+
       var oModel = this.getOwnerComponent().getModel();
       var sUrl = "/getMyTimeEntries(employeeId='" + sEmployeeId +
                  "',fromDate='" + sFromDate + "',toDate='" + sToDate + "')";
