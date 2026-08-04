@@ -28,3 +28,11 @@
 #timesheetObjectHeader .sapUiIcon {
   color: #0A6ED1 !important;
 }
+
+th.tsWeekendCol {
+  background-color: #F2F2F2 !important;
+}
+
+.sapMInputBase.tsWeekendCol .sapMInputBaseInner {
+  background-color: #F2F2F2;
+}

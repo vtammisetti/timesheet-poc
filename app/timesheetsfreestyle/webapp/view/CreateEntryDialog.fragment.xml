@@ -1,6 +1,7 @@
 <core:FragmentDefinition
   xmlns="sap.m"
-  xmlns:core="sap.ui.core">
+  xmlns:core="sap.ui.core"
+  xmlns:unified="sap.ui.unified">
   <Dialog
     id="createEntryDialog"
     title="Record Timesheet Entries"
@@ -23,6 +24,40 @@
           <Button id="prevPeriodButton" icon="sap-icon://slim-arrow-left" type="Transparent" press="onPrevPeriod" />
           <Text id="periodLabelText" text="{entryDialog>/periodLabel}" class="sapUiSmallMarginBeginEnd" />
           <Button id="nextPeriodButton" icon="sap-icon://slim-arrow-right" type="Transparent" press="onNextPeriod" />
+          <DatePicker
+            id="periodDatePicker"
+            visible="{= ${entryDialog>/viewMode} === 'day' }"
+            dateValue="{entryDialog>/selectedDateValue}"
+            change="onDatePickerChange"
+            displayFormat="medium"
+            valueFormat="yyyy-MM-dd"
+            width="9rem"
+            tooltip="Pick a date"
+            class="sapUiTinyMarginBegin" />
+          <Button
+            id="weekPickerButton"
+            icon="sap-icon://appointment-2"
+            type="Transparent"
+            tooltip="Pick a week"
+            press="onWeekPickerPress"
+            visible="{= ${entryDialog>/viewMode} === 'week' }"
+            class="sapUiTinyMarginBegin" />
+          <Popover
+            id="weekPickerPopover"
+            placement="Bottom"
+            title="Select a Week"
+            contentWidth="18.5rem">
+            <content>
+              <unified:Calendar
+                id="weekPickerCalendar"
+                intervalSelection="true"
+                singleSelection="true"
+                showWeekNumbers="true"
+                firstDayOfWeek="1"
+                select="onWeekCalendarSelect"
+                weekNumberSelect="onWeekNumberSelect" />
+            </content>
+          </Popover>
           <ToolbarSpacer id="periodNavSpacer" />
           <Select id="logModeSelect" selectedKey="{entryDialog>/viewMode}" change="onViewModeChange">
             <core:Item id="dailyLogItem" key="day" text="Daily Log" />
@@ -55,7 +90,7 @@
                 </Select>
                 <Input id="dayRowWorkCenterInput" value="{entryDialog>workCenter}" />
                 <Input id="dayRowRemarksInput" value="{entryDialog>remarks}" placeholder="Enter Description" />
-                <Input id="dayRowHoursInput" value="{entryDialog>hours}" type="Number" textAlign="End" placeholder="0.00" />
+                <Input id="dayRowHoursInput" value="{entryDialog>hours}" type="Number" textAlign="End" placeholder="0.00" liveChange="onDayHoursChange" change="onDayHoursChange" />
                 <Button id="dayRowDeleteButton" icon="sap-icon://delete" type="Transparent" press="onDeleteDayRow" />
               </cells>
             </ColumnListItem>
@@ -68,6 +103,15 @@
           icon="sap-icon://add"
           type="Transparent"
           press="onAddDayRow" />
+
+        <HBox
+          id="dayTotalHBox"
+          visible="{= ${entryDialog>/viewMode} === 'day' }"
+          class="sapUiSmallMarginTop"
+          justifyContent="End">
+          <Text id="dayTotalLabel" text="Day Total: " class="sapUiSmallMarginEnd" />
+          <Text id="dayTotalValue" text="{entryDialog>/dayTotal}" />
+        </HBox>
 
         <!-- WEEK VIEW -->
         <Table
@@ -85,8 +129,8 @@
             <Column id="weekDayCol2" hAlign="Center"><Text id="weekDayCol2Title" text="{entryDialog>/weekDates/2/label}" /></Column>
             <Column id="weekDayCol3" hAlign="Center"><Text id="weekDayCol3Title" text="{entryDialog>/weekDates/3/label}" /></Column>
             <Column id="weekDayCol4" hAlign="Center"><Text id="weekDayCol4Title" text="{entryDialog>/weekDates/4/label}" /></Column>
-            <Column id="weekDayCol5" hAlign="Center"><Text id="weekDayCol5Title" text="{entryDialog>/weekDates/5/label}" /></Column>
-            <Column id="weekDayCol6" hAlign="Center"><Text id="weekDayCol6Title" text="{entryDialog>/weekDates/6/label}" /></Column>
+            <Column id="weekDayCol5" hAlign="Center" class="tsWeekendCol"><Text id="weekDayCol5Title" text="{entryDialog>/weekDates/5/label}" /></Column>
+            <Column id="weekDayCol6" hAlign="Center" class="tsWeekendCol"><Text id="weekDayCol6Title" text="{entryDialog>/weekDates/6/label}" /></Column>
             <Column id="weekRowActionCol" />
           </columns>
           <items>
@@ -99,13 +143,13 @@
                 </Select>
                 <Input id="weekRowWorkCenterInput" value="{entryDialog>workCenter}" />
                 <Input id="weekRowRemarksInput" value="{entryDialog>remarks}" placeholder="Enter Description" />
-                <Input id="weekRowDay0Input" value="{entryDialog>hoursByDay/day0}" type="Number" textAlign="Center" placeholder="00:00" />
-                <Input id="weekRowDay1Input" value="{entryDialog>hoursByDay/day1}" type="Number" textAlign="Center" placeholder="00:00" />
-                <Input id="weekRowDay2Input" value="{entryDialog>hoursByDay/day2}" type="Number" textAlign="Center" placeholder="00:00" />
-                <Input id="weekRowDay3Input" value="{entryDialog>hoursByDay/day3}" type="Number" textAlign="Center" placeholder="00:00" />
-                <Input id="weekRowDay4Input" value="{entryDialog>hoursByDay/day4}" type="Number" textAlign="Center" placeholder="00:00" />
-                <Input id="weekRowDay5Input" value="{entryDialog>hoursByDay/day5}" type="Number" textAlign="Center" placeholder="00:00" />
-                <Input id="weekRowDay6Input" value="{entryDialog>hoursByDay/day6}" type="Number" textAlign="Center" placeholder="00:00" />
+                <Input id="weekRowDay0Input" value="{entryDialog>hoursByDay/day0}" type="Number" textAlign="Center" placeholder="00:00" liveChange="onWeekHoursChange" change="onWeekHoursChange" />
+                <Input id="weekRowDay1Input" value="{entryDialog>hoursByDay/day1}" type="Number" textAlign="Center" placeholder="00:00" liveChange="onWeekHoursChange" change="onWeekHoursChange" />
+                <Input id="weekRowDay2Input" value="{entryDialog>hoursByDay/day2}" type="Number" textAlign="Center" placeholder="00:00" liveChange="onWeekHoursChange" change="onWeekHoursChange" />
+                <Input id="weekRowDay3Input" value="{entryDialog>hoursByDay/day3}" type="Number" textAlign="Center" placeholder="00:00" liveChange="onWeekHoursChange" change="onWeekHoursChange" />
+                <Input id="weekRowDay4Input" value="{entryDialog>hoursByDay/day4}" type="Number" textAlign="Center" placeholder="00:00" liveChange="onWeekHoursChange" change="onWeekHoursChange" />
+                <Input id="weekRowDay5Input" value="{entryDialog>hoursByDay/day5}" type="Number" textAlign="Center" placeholder="00:00" class="tsWeekendCol" liveChange="onWeekHoursChange" change="onWeekHoursChange" />
+                <Input id="weekRowDay6Input" value="{entryDialog>hoursByDay/day6}" type="Number" textAlign="Center" placeholder="00:00" class="tsWeekendCol" liveChange="onWeekHoursChange" change="onWeekHoursChange" />
                 <Button id="weekRowDeleteButton" icon="sap-icon://delete" type="Transparent" press="onDeleteWeekRow" />
               </cells>
             </ColumnListItem>

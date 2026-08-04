@@ -4,8 +4,9 @@ sap.ui.define([
   "sap/ui/model/json/JSONModel",
   "sap/m/MessageBox",
   "sap/m/MessageToast",
+  "sap/ui/unified/DateRange",
   "timesheetsfreestyle/model/formatter"
-], function (Controller, Fragment, JSONModel, MessageBox, MessageToast, formatter) {
+], function (Controller, Fragment, JSONModel, MessageBox, MessageToast, DateRange, formatter) {
   "use strict";
 
   return Controller.extend("timesheetsfreestyle.controller.TimeEntries", {
@@ -369,9 +370,11 @@ sap.ui.define([
       companyCode: oUser.companyCode,
       viewMode: "day",
       periodLabel: "",
+      selectedDateValue: this._selectedDate,
       dayRows: this._buildDefaultDayRows(),
       weekRows: this._buildDefaultWeekRows(),
       weekDates: [],
+      dayTotal: "0.00",
       weekTotal: "0.00"
     });
 
@@ -423,12 +426,14 @@ _refreshPeriodLabel: function (oDialog) {
       ? "Today"
       : this._selectedDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
     oModel.setProperty("/periodLabel", sLabel);
+    oModel.setProperty("/selectedDateValue", new Date(this._selectedDate));
   } else {
     var oEnd = new Date(this._weekStart);
     oEnd.setDate(oEnd.getDate() + 6);
     var sStartLabel = this._weekStart.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
     var sEndLabel = oEnd.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
     oModel.setProperty("/periodLabel", sStartLabel + " - " + sEndLabel);
+    oModel.setProperty("/selectedDateValue", new Date(this._weekStart));
   }
 },
 
@@ -483,6 +488,69 @@ onNextPeriod: function () {
   }.bind(this));
 },
 
+onDatePickerChange: function (oEvent) {
+  if (!oEvent.getParameter("valid")) {
+    return;
+  }
+  var oDate = oEvent.getParameter("date");
+  if (!oDate) {
+    return;
+  }
+
+  this._pDialog.then(function (oDialog) {
+    this._selectedDate = oDate;
+    this._refreshPeriodLabel(oDialog);
+  }.bind(this));
+},
+
+onWeekPickerPress: function (oEvent) {
+  this._pDialog.then(function () {
+    var oPopover = this.byId("weekPickerPopover");
+    var oCalendar = this.byId("weekPickerCalendar");
+
+    oCalendar.destroySelectedDates();
+    var oWeekEnd = new Date(this._weekStart);
+    oWeekEnd.setDate(oWeekEnd.getDate() + 6);
+    oCalendar.addSelectedDate(new DateRange({ startDate: new Date(this._weekStart), endDate: oWeekEnd }));
+    oCalendar.displayDate(this._weekStart);
+
+    oPopover.openBy(oEvent.getSource());
+  }.bind(this));
+},
+
+onWeekCalendarSelect: function (oEvent) {
+  var oCalendar = oEvent.getSource();
+  var aSelectedDates = oCalendar.getSelectedDates();
+  if (!aSelectedDates.length) {
+    return;
+  }
+  this._applySelectedWeek(oCalendar, aSelectedDates[0].getStartDate());
+},
+
+onWeekNumberSelect: function (oEvent) {
+  var oWeekDays = oEvent.getParameter("weekDays");
+  if (!oWeekDays) {
+    return;
+  }
+  this._applySelectedWeek(oEvent.getSource(), oWeekDays.getStartDate());
+},
+
+_applySelectedWeek: function (oCalendar, oClickedDate) {
+  this._weekStart = this._getWeekStart(oClickedDate);
+  var oWeekEnd = new Date(this._weekStart);
+  oWeekEnd.setDate(oWeekEnd.getDate() + 6);
+
+  oCalendar.destroySelectedDates();
+  oCalendar.addSelectedDate(new DateRange({ startDate: new Date(this._weekStart), endDate: oWeekEnd }));
+
+  this._pDialog.then(function (oDialog) {
+    this._refreshWeekDates(oDialog);
+    this._refreshPeriodLabel(oDialog);
+  }.bind(this));
+
+  this.byId("weekPickerPopover").close();
+},
+
 onAddDayRow: function () {
   this._pDialog.then(function (oDialog) {
     var oModel = oDialog.getModel("entryDialog");
@@ -501,7 +569,29 @@ onDeleteDayRow: function (oEvent) {
     var aRows = oModel.getProperty("/dayRows");
     aRows.splice(iIndex, 1);
     oModel.setProperty("/dayRows", aRows);
+    this._refreshDayTotal(oDialog);
   }.bind(this));
+},
+
+onDayHoursChange: function () {
+  this._pDialog.then(function (oDialog) {
+    this._refreshDayTotal(oDialog);
+  }.bind(this));
+},
+
+_refreshDayTotal: function (oDialog) {
+  var oModel = oDialog.getModel("entryDialog");
+  var aRows = oModel.getProperty("/dayRows");
+  var fTotal = 0;
+
+  aRows.forEach(function (oRow) {
+    var fHours = parseFloat(oRow.hours);
+    if (!isNaN(fHours)) {
+      fTotal += fHours;
+    }
+  });
+
+  oModel.setProperty("/dayTotal", fTotal.toFixed(2));
 },
 
 onAddWeekRow: function () {
@@ -525,7 +615,31 @@ onDeleteWeekRow: function (oEvent) {
     var aRows = oModel.getProperty("/weekRows");
     aRows.splice(iIndex, 1);
     oModel.setProperty("/weekRows", aRows);
+    this._refreshWeekTotal(oDialog);
   }.bind(this));
+},
+
+onWeekHoursChange: function () {
+  this._pDialog.then(function (oDialog) {
+    this._refreshWeekTotal(oDialog);
+  }.bind(this));
+},
+
+_refreshWeekTotal: function (oDialog) {
+  var oModel = oDialog.getModel("entryDialog");
+  var aRows = oModel.getProperty("/weekRows");
+  var fTotal = 0;
+
+  aRows.forEach(function (oRow) {
+    Object.keys(oRow.hoursByDay).forEach(function (sKey) {
+      var fHours = parseFloat(oRow.hoursByDay[sKey]);
+      if (!isNaN(fHours)) {
+        fTotal += fHours;
+      }
+    });
+  });
+
+  oModel.setProperty("/weekTotal", fTotal.toFixed(2));
 },
 
 onCancelDialog: function () {

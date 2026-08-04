@@ -3,12 +3,6 @@ sap.ui.define([], function () {
 
   var TSAPP_PATTERN = /\[TSAPP_START:(.+?)\|TSAPP_END:(.+?)\]\s*/;
 
-  // Workflow progression used to pick the "furthest along" status when several
-  // logs (e.g. all logs on one date) have different statuses. DRAFT is pre-workflow
-  // (nothing's been sent to S4 yet) so it ranks below everything real — a mixed day
-  // shows the real status; an all-draft day correctly falls back to "Draft".
-  var STATUS_RANK = { "DRAFT": 0, "20": 1, "30": 2, "60": 3 };
-
   return {
     formatDate: function (sIsoDate) {
       if (!sIsoDate) return "";
@@ -55,17 +49,27 @@ sap.ui.define([], function () {
       return sRemarks.replace(TSAPP_PATTERN, "").trim();
     },
 
-    // Given a list of logs (each with a .status code), returns the status code of the
-    // one furthest along the approval workflow — used as the "overall" status for a
-    // group of logs (e.g. all logs recorded on the same date).
+    // Given a list of logs (each with a .status code), returns the "overall" status
+    // code for the group (e.g. all logs recorded on the same date), in priority order:
+    // 1. Any Draft means the day still needs the user's attention, so it wins outright.
+    // 2. Any Processed log next — once payroll has processed one log for the day,
+    //    that's the most significant state to surface.
+    // 3. "Approved" only if EVERY remaining log is Approved — not "at least one".
+    // 4. Otherwise (a mix that includes a still-pending "Sent for Approval" log),
+    //    report "Sent for Approval" since the day isn't fully approved yet.
     overallStatusCode: function (aLogs) {
-      var oBest = null;
-      (aLogs || []).forEach(function (e) {
-        if (!oBest || (STATUS_RANK[e.status] || 0) > (STATUS_RANK[oBest.status] || 0)) {
-          oBest = e;
-        }
-      });
-      return oBest ? oBest.status : "";
+      if (!aLogs || !aLogs.length) return "";
+
+      if (aLogs.some(function (e) { return e.status === "DRAFT"; })) {
+        return "DRAFT";
+      }
+      if (aLogs.some(function (e) { return e.status === "60"; })) {
+        return "60";
+      }
+      if (aLogs.every(function (e) { return e.status === "30"; })) {
+        return "30";
+      }
+      return "20";
     }
   };
 });
