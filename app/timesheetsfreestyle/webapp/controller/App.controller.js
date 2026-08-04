@@ -1,9 +1,8 @@
 sap.ui.define([
   "sap/ui/core/mvc/Controller",
   "sap/m/Menu",
-  "sap/m/MenuItem",
-  "sap/m/MessageToast"
-], function (Controller, Menu, MenuItem, MessageToast) {
+  "sap/m/MenuItem"
+], function (Controller, Menu, MenuItem) {
   "use strict";
 
   return Controller.extend("timesheetsfreestyle.controller.App", {
@@ -41,20 +40,12 @@ sap.ui.define([
     },
 
     onRefreshApp: function () {
-      var oTimeEntriesController = this._getTimeEntriesController();
-      if (oTimeEntriesController && oTimeEntriesController.refresh) {
-        oTimeEntriesController.refresh();
-        MessageToast.show("Refreshed");
-      }
-    },
-
-    _getTimeEntriesController: function () {
-      var oNavContainer = this.byId("appNavContainer");
-      var oCurrentPage = oNavContainer && oNavContainer.getCurrentPage();
-      if (!oCurrentPage || oCurrentPage.getId() !== this.getOwnerComponent().createId("timeEntries")) {
-        return null;
-      }
-      return oCurrentPage.getController();
+      // Drafts are mirrored to localStorage (see Component.js), so a full
+      // reload is safe and reflects "refresh" for the whole app. Reset the
+      // hash to the start route first (replacing history) so the reload
+      // lands on index.html# instead of re-matching e.g. an object page URL.
+      this.getOwnerComponent().getRouter().navTo("timeEntries", {}, true);
+      window.location.reload();
     },
 
     onUserNamePress: function (oEvent) {
