@@ -2,11 +2,10 @@ sap.ui.define([
   "sap/ui/core/mvc/Controller",
   "sap/ui/core/Fragment",
   "sap/ui/model/json/JSONModel",
-  "sap/ui/model/Filter",
-  "sap/ui/model/FilterOperator",
+  "sap/m/MessageBox",
   "sap/m/MessageToast",
   "timesheetsfreestyle/model/formatter"
-], function (Controller,Fragment, JSONModel, Filter, FilterOperator, MessageToast, formatter) {
+], function (Controller, Fragment, JSONModel, MessageBox, MessageToast, formatter) {
   "use strict";
 
   return Controller.extend("timesheetsfreestyle.controller.TimeEntries", {
@@ -16,6 +15,7 @@ sap.ui.define([
     onInit: function () {
       this.getView().setModel(new JSONModel({
         entries: [],
+        dailySummaries: [],
         periodMode: "1W",
         periodLabel: "",
         emptyIllustrationType: "NoActivities",
@@ -23,7 +23,12 @@ sap.ui.define([
         emptyDescription: "You haven't logged any time for this period yet.",
         showCreateLogInEmptyState: true
       }), "myModel");
-      this.getView().setModel(new JSONModel({ status: [], category: [], workCenter: [] }), "facets");
+      this.getView().setModel(new JSONModel({ companyCode: [], category: [], workCenter: [] }), "facets");
+
+      // Active facet/search selections, reapplied after every reload since summaries
+      // are rebuilt (client-side) from raw entries rather than filtered on a live binding.
+      this._aActiveFacetKeys = [];
+      this._sActiveSearch = "";
 
       // Default landing view: current week, loaded automatically.
       this._periodMode = "1W";
@@ -38,6 +43,26 @@ sap.ui.define([
       } else {
         this._loadCurrentPeriod();
       }
+    },
+
+    // Public — called by the Object Page after an edit/delete/draft-submit, and by
+    // this controller itself after any draft change. S4's timesheet write API is
+    // asynchronous (a create/update/delete isn't immediately visible to a read), so
+    // re-fetching from the backend right after a change would just read back the
+    // pre-change state. Re-derive the list from the shared models instead — real
+    // entries from "timesheetData" (already patched optimistically), plus this
+    // employee's local drafts, which never touch the backend at all.
+    syncFromSharedEntries: function () {
+      var oUser = this.getOwnerComponent().getCurrentUser();
+      var aRealEntries = this.getOwnerComponent().getModel("timesheetData").getProperty("/entries") || [];
+      var aDrafts = this.getOwnerComponent().getDraftEntries().filter(function (d) {
+        return d.employeeId === oUser.employeeId;
+      });
+      var aCombined = aRealEntries.concat(aDrafts);
+
+      this.getView().getModel("myModel").setProperty("/entries", aCombined);
+      this._buildFacets(aCombined);
+      this._applyFilters(this._aActiveFacetKeys, this._sActiveSearch);
     },
 
     onPeriodModeChange: function (oEvent) {
@@ -156,11 +181,35 @@ sap.ui.define([
 
       oContextBinding.requestObject().then(function (oResult) {
         var aEntries = oResult.value || oResult;
-        this.getView().getModel("myModel").setProperty("/entries", aEntries);
-        this._buildFacets(aEntries);
-        this._setEmptyState(aEntries.length > 0, false);
+        // Shared with the Object Page so it can look up a date's logs without refetching.
+        this.getOwnerComponent().getModel("timesheetData").setProperty("/entries", aEntries);
+        this.syncFromSharedEntries();
       }.bind(this)).catch(function (oError) {
         MessageToast.show("Failed to load entries: " + oError.message);
+      });
+    },
+
+    // Roll individual log entries up into one row per date.
+    _buildDailySummaries: function (aEntries) {
+      var mByDate = {};
+      aEntries.forEach(function (e) {
+        var sDate = (e.entryDate || "").slice(0, 10);
+        if (!mByDate[sDate]) {
+          mByDate[sDate] = { isoDate: sDate, totalHours: 0, logCount: 0, logs: [] };
+        }
+        mByDate[sDate].totalHours += parseFloat(e.hours) || 0;
+        mByDate[sDate].logCount += 1;
+        mByDate[sDate].logs.push(e);
+      });
+
+      return Object.keys(mByDate).sort().reverse().map(function (sDate) {
+        var oDay = mByDate[sDate];
+        return {
+          isoDate: oDay.isoDate,
+          totalHours: oDay.totalHours.toFixed(2),
+          logCount: oDay.logCount,
+          companyCode: oDay.logs[0] ? oDay.logs[0].companyCode : ""
+        };
       });
     },
 
@@ -184,10 +233,10 @@ sap.ui.define([
 
     // Derive facet filter options from the actual data returned — no hardcoded lists
     _buildFacets: function (aEntries) {
-      var mStatus = {}, mCategory = {}, mWorkCenter = {};
+      var mCompanyCode = {}, mCategory = {}, mWorkCenter = {};
 
       aEntries.forEach(function (e) {
-        if (e.status) mStatus[e.status] = true;
+        if (e.companyCode) mCompanyCode[e.companyCode] = true;
         if (e.category) mCategory[e.category] = true;
         if (e.workCenter) mWorkCenter[e.workCenter] = true;
       });
@@ -199,7 +248,7 @@ sap.ui.define([
       };
 
       this.getView().getModel("facets").setData({
-        status: toFacetArray(mStatus, formatter.formatStatus),
+        companyCode: toFacetArray(mCompanyCode),
         category: toFacetArray(mCategory),
         workCenter: toFacetArray(mWorkCenter)
       });
@@ -238,38 +287,48 @@ sap.ui.define([
       this._applyFilters(aSelectedKeys, sQuery);
     },
 
+    // Filters the raw entries (client-side — myModel is a JSONModel) then rebuilds the
+    // per-date summaries shown in the table from that filtered subset. A date only
+    // shows up if at least one of its logs matches; totals reflect the matching logs only.
     _applyFilters: function (aFacetKeys, sSearchQuery) {
-      var oTable = this.byId("entriesTable");
-      var oBinding = oTable.getBinding("items");
-      var aFilters = [];
+      this._aActiveFacetKeys = aFacetKeys;
+      this._sActiveSearch = sSearchQuery;
 
-      // Group facet selections by field, OR within a field, AND across fields
+      var aRawEntries = this.getView().getModel("myModel").getProperty("/entries") || [];
+
       var mByField = {};
       aFacetKeys.forEach(function (o) {
         mByField[o.field] = mByField[o.field] || [];
-        mByField[o.field].push(new Filter(o.field, FilterOperator.EQ, o.value));
+        mByField[o.field].push(o.value);
       });
-      Object.keys(mByField).forEach(function (sField) {
-        aFilters.push(new Filter({ filters: mByField[sField], and: false }));
+
+      var aFiltered = aRawEntries.filter(function (e) {
+        return Object.keys(mByField).every(function (sField) {
+          return mByField[sField].indexOf(e[sField]) !== -1;
+        });
       });
 
       if (sSearchQuery) {
-        aFilters.push(new Filter({
-          filters: [
-            new Filter("workCenter", FilterOperator.Contains, sSearchQuery),
-            new Filter("category", FilterOperator.Contains, sSearchQuery),
-            new Filter("remarks", FilterOperator.Contains, sSearchQuery)
-          ],
-          and: false
-        }));
+        var sQuery = sSearchQuery.toLowerCase();
+        aFiltered = aFiltered.filter(function (e) {
+          return (e.workCenter || "").toLowerCase().indexOf(sQuery) !== -1 ||
+                 (e.category || "").toLowerCase().indexOf(sQuery) !== -1 ||
+                 (e.remarks || "").toLowerCase().indexOf(sQuery) !== -1;
+        });
       }
 
-      oBinding.filter(new Filter({ filters: aFilters, and: true }));
+      var aSummaries = this._buildDailySummaries(aFiltered);
+      this.getView().getModel("myModel").setProperty("/dailySummaries", aSummaries);
 
-      var aRawEntries = this.getView().getModel("myModel").getProperty("/entries");
       var bHasEntries = aRawEntries.length > 0;
-      var bFilteredEmpty = bHasEntries && oBinding.getLength() === 0;
+      var bFilteredEmpty = bHasEntries && aSummaries.length === 0;
       this._setEmptyState(bHasEntries, bFilteredEmpty);
+    },
+
+    onDailySummaryPress: function (oEvent) {
+      var oContext = oEvent.getSource().getBindingContext("myModel");
+      var sIsoDate = oContext.getProperty("isoDate");
+      this.getOwnerComponent().getRouter().navTo("objectPage", { date: sIsoDate });
     },
 
     onSortPress: function () {
@@ -315,11 +374,7 @@ sap.ui.define([
 },
 
 _buildDefaultDayRows: function () {
-  var aRows = [];
-  for (var i = 1; i <= 5; i++) {
-    aRows.push({ sNo: i, category: "TRAI", workCenter: "OD11101901", remarks: "", hours: "" });
-  }
-  return aRows;
+  return [{ sNo: 1, category: "TRAI", workCenter: "OD11101901", remarks: "", hours: "" }];
 },
 
 _buildDefaultWeekRows: function () {
@@ -473,17 +528,13 @@ onSubmitEntries: function () {
 
   this._pDialog.then(function (oDialog) {
     var oData = oDialog.getModel("entryDialog").getData();
-    var oModel = that.getOwnerComponent().getModel();
-    var aCalls = [];
+    var aNewDrafts = [];
 
     if (oData.viewMode === "day") {
       var sDate = that._formatForBackendDate(that._selectedDate);
       oData.dayRows.forEach(function (oRow) {
         if (oRow.workCenter && oRow.category && oRow.hours) {
-          aCalls.push(that._createOneEntry(oModel, oData.employeeId, oData.companyCode, {
-            date: sDate, category: oRow.category, workCenter: oRow.workCenter,
-            hours: oRow.hours, remarks: oRow.remarks
-          }));
+          aNewDrafts.push(that._buildDraftEntry(oData, sDate, oRow));
         }
       });
     } else {
@@ -492,47 +543,46 @@ onSubmitEntries: function () {
           var sKey = "day" + i;
           var sHours = oRow.hoursByDay[sKey];
           if (sHours && parseFloat(sHours) > 0 && oRow.workCenter && oRow.category) {
-            aCalls.push(that._createOneEntry(oModel, oData.employeeId, oData.companyCode, {
-              date: oDay.isoDate, category: oRow.category, workCenter: oRow.workCenter,
-              hours: sHours, remarks: oRow.remarks
-            }));
+            aNewDrafts.push(that._buildDraftEntry(oData, oDay.isoDate, Object.assign({}, oRow, { hours: sHours })));
           }
         });
       });
     }
 
-    if (!aCalls.length) {
+    if (!aNewDrafts.length) {
       MessageBox.error("Enter at least one valid row with Work Center, Task Type, and Hours.");
       return;
     }
 
-    oDialog.setBusy(true);
-    Promise.all(aCalls).then(function () {
-      oDialog.setBusy(false);
-      oDialog.close();
-      MessageToast.show(aCalls.length + " entries submitted (test-run mode)");
-      that.refresh();
-    }).catch(function (oError) {
-      oDialog.setBusy(false);
-      MessageBox.error("One or more entries failed: " + oError.message);
+    // Nothing is sent to S4 here — rows are saved as local Drafts and only reach
+    // the backend when the user submits them from the day's Logs table.
+    aNewDrafts.forEach(function (oDraft) {
+      that.getOwnerComponent().addDraftEntry(oDraft);
     });
+
+    oDialog.close();
+    MessageToast.show(aNewDrafts.length + " entries saved as Draft — submit them from the day's Logs to send to your timesheet.");
+    that.syncFromSharedEntries();
   });
 },
 
-_createOneEntry: function (oModel, sEmployeeId, sCompanyCode, oRow) {
-  var oActionBinding = oModel.bindContext("/createTimeEntry(...)");
-  oActionBinding.setParameter("employeeId", sEmployeeId);
-  oActionBinding.setParameter("companyCode", sCompanyCode);
-  oActionBinding.setParameter("entryDate", oRow.date);
-  oActionBinding.setParameter("workCenter", oRow.workCenter);
-  oActionBinding.setParameter("category", oRow.category);
-  oActionBinding.setParameter("startTime", "");
-  oActionBinding.setParameter("endTime", "");
-  oActionBinding.setParameter("hours", parseFloat(oRow.hours));
-  oActionBinding.setParameter("remarks", oRow.remarks || "");
-  return oActionBinding.execute().then(function () {
-    return oActionBinding.getBoundContext().getObject();
-  });
+// Builds a local Draft entry shaped like a real backend entry (same field names as
+// getMyTimeEntries) so it flows through the existing rendering/formatter/sort code
+// unmodified. "record" is a locally-generated id, never an S4 record number.
+_buildDraftEntry: function (oDialogData, sIsoDate, oRow) {
+  var fHours = parseFloat(oRow.hours);
+  return {
+    employeeId: oDialogData.employeeId,
+    companyCode: oDialogData.companyCode,
+    entryDate: sIsoDate,
+    status: "DRAFT",
+    workCenter: oRow.workCenter,
+    category: oRow.category,
+    hours: fHours.toFixed(2),
+    remarks: oRow.remarks || "",
+    record: "DRAFT-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8),
+    isDraft: true
+  };
 }
   });
 });

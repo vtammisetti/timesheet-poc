@@ -3,6 +3,12 @@ sap.ui.define([], function () {
 
   var TSAPP_PATTERN = /\[TSAPP_START:(.+?)\|TSAPP_END:(.+?)\]\s*/;
 
+  // Workflow progression used to pick the "furthest along" status when several
+  // logs (e.g. all logs on one date) have different statuses. DRAFT is pre-workflow
+  // (nothing's been sent to S4 yet) so it ranks below everything real — a mixed day
+  // shows the real status; an all-draft day correctly falls back to "Draft".
+  var STATUS_RANK = { "DRAFT": 0, "20": 1, "30": 2, "60": 3 };
+
   return {
     formatDate: function (sIsoDate) {
       if (!sIsoDate) return "";
@@ -12,6 +18,7 @@ sap.ui.define([], function () {
 
     formatStatus: function (sStatusCode) {
       var mStatusMap = {
+        "DRAFT": "Draft",
         "20": "Sent for Approval",
         "30": "Approved",
         "60": "Processed"
@@ -21,6 +28,7 @@ sap.ui.define([], function () {
 
     statusState: function (sStatusCode) {
       var mStateMap = {
+        "DRAFT": "Information",
         "20": "Warning",
         "30": "Success",
         "60": "Warning"
@@ -45,6 +53,19 @@ sap.ui.define([], function () {
     cleanRemarks: function (sRemarks) {
       if (!sRemarks) return "";
       return sRemarks.replace(TSAPP_PATTERN, "").trim();
+    },
+
+    // Given a list of logs (each with a .status code), returns the status code of the
+    // one furthest along the approval workflow — used as the "overall" status for a
+    // group of logs (e.g. all logs recorded on the same date).
+    overallStatusCode: function (aLogs) {
+      var oBest = null;
+      (aLogs || []).forEach(function (e) {
+        if (!oBest || (STATUS_RANK[e.status] || 0) > (STATUS_RANK[oBest.status] || 0)) {
+          oBest = e;
+        }
+      });
+      return oBest ? oBest.status : "";
     }
   };
 });

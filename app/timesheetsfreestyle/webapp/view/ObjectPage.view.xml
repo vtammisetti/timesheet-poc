@@ -1,0 +1,195 @@
+<mvc:View
+  controllerName="timesheetsfreestyle.controller.ObjectPage"
+  xmlns:mvc="sap.ui.core.mvc"
+  xmlns:uxap="sap.uxap"
+  xmlns:f="sap.ui.layout.form"
+  xmlns="sap.m">
+  <Page id="objectPage" showNavButton="true" navButtonPress="onNavBack" title="Timesheet Details">
+    <footer>
+      <Toolbar id="objectPageFooterToolbar">
+        <ToolbarSpacer id="objectPageFooterSpacer" />
+        <Button
+          id="submitDraftButton"
+          text="Submit"
+          icon="sap-icon://paper-plane"
+          type="Emphasized"
+          enabled="{objectPage>/submitEnabled}"
+          press="onSubmitDraftPress" />
+      </Toolbar>
+    </footer>
+    <uxap:ObjectPageLayout id="objectPageLayout" upperCaseAnchorBar="false">
+
+      <uxap:headerTitle>
+        <uxap:ObjectPageHeader
+          id="objectPageHeader"
+          objectTitle="{objectPage>/displayDate}"
+          objectSubtitle="{objectPage>/employeeLabel}" />
+      </uxap:headerTitle>
+
+      <uxap:headerContent>
+        <VBox id="objectPageHeaderContentVBox">
+          <ObjectNumber id="objectPageTotalHours" number="{objectPage>/totalHours}" unit="hrs" emphasized="true" />
+          <Text id="objectPageLogCountText" text="{objectPage>/logCount} entries recorded" class="sapUiTinyMarginTop" />
+          <ObjectStatus
+            id="objectPageOverallStatus"
+            text="{objectPage>/overallStatusText}"
+            state="{objectPage>/overallStatusState}"
+            class="sapUiTinyMarginTop" />
+        </VBox>
+      </uxap:headerContent>
+
+      <uxap:sections>
+
+        <uxap:ObjectPageSection id="generalInfoSection" title="General Information">
+          <uxap:subSections>
+            <uxap:ObjectPageSubSection id="generalInfoSubSection">
+              <uxap:blocks>
+                <f:SimpleForm id="generalInfoForm" editable="false" layout="ResponsiveGridLayout" labelSpanL="4" labelSpanM="4">
+                  <f:content>
+                    <Label id="generalInfoDateLabel" text="Date" />
+                    <Text id="generalInfoDateValue" text="{objectPage>/displayDate}" />
+
+                    <Label id="generalInfoEmployeeLabel" text="Employee" />
+                    <Text id="generalInfoEmployeeValue" text="{objectPage>/employeeLabel} ({objectPage>/employeeId})" />
+
+                    <Label id="generalInfoCompanyCodeLabel" text="Company Code" />
+                    <Text id="generalInfoCompanyCodeValue" text="{objectPage>/companyCode}" />
+
+                    <Label id="generalInfoTotalHoursLabel" text="Total Hours" />
+                    <Text id="generalInfoTotalHoursValue" text="{objectPage>/totalHours}" />
+
+                    <Label id="generalInfoLogCountLabel" text="Number of Entries" />
+                    <Text id="generalInfoLogCountValue" text="{objectPage>/logCount}" />
+
+                    <Label id="generalInfoStatusLabel" text="Overall Status" />
+                    <ObjectStatus
+                      id="generalInfoStatusValue"
+                      text="{objectPage>/overallStatusText}"
+                      state="{objectPage>/overallStatusState}" />
+                  </f:content>
+                </f:SimpleForm>
+              </uxap:blocks>
+            </uxap:ObjectPageSubSection>
+          </uxap:subSections>
+        </uxap:ObjectPageSection>
+
+        <uxap:ObjectPageSection id="logsSection" title="Entries">
+          <uxap:subSections>
+            <uxap:ObjectPageSubSection id="logsSubSection">
+              <uxap:blocks>
+                <VBox id="logsSectionVBox">
+                  <FacetFilter
+                    id="logsFacetFilter"
+                    type="Simple"
+                    showPersonalization="true"
+                    showReset="true"
+                    showPopoverOKButton="true"
+                    reset="onLogFacetFilterReset"
+                    confirm="onLogFacetFilterConfirm"
+                    class="sapUiSmallMarginBottom">
+                    <lists>
+                      <FacetFilterList
+                        id="logsStatusFacetList"
+                        title="Status"
+                        key="status"
+                        mode="MultiSelect"
+                        items="{logFacets>/status}">
+                        <items>
+                          <FacetFilterItem id="logsStatusFacetItem" text="{logFacets>text}" key="{logFacets>key}" />
+                        </items>
+                      </FacetFilterList>
+                      <FacetFilterList
+                        id="logsCategoryFacetList"
+                        title="Category"
+                        key="category"
+                        mode="MultiSelect"
+                        items="{logFacets>/category}">
+                        <items>
+                          <FacetFilterItem id="logsCategoryFacetItem" text="{logFacets>text}" key="{logFacets>key}" />
+                        </items>
+                      </FacetFilterList>
+                      <FacetFilterList
+                        id="logsWorkCenterFacetList"
+                        title="Work Center"
+                        key="workCenter"
+                        mode="MultiSelect"
+                        items="{logFacets>/workCenter}">
+                        <items>
+                          <FacetFilterItem id="logsWorkCenterFacetItem" text="{logFacets>text}" key="{logFacets>key}" />
+                        </items>
+                      </FacetFilterList>
+                    </lists>
+                  </FacetFilter>
+
+                  <Table
+                    id="logsTable"
+                    items="{objectPage>/displayLogs}"
+                    noDataText="No entries for this date">
+                    <headerToolbar>
+                      <OverflowToolbar id="logsTableToolbar">
+                        <Title id="logsTableTitle" text="Entries ({objectPage>/logCount})" />
+                        <ToolbarSpacer id="logsTableToolbarSpacer" />
+                        <Button
+                          id="editLogButton"
+                          text="Edit"
+                          icon="sap-icon://edit"
+                          type="Transparent"
+                          enabled="{objectPage>/editEnabled}"
+                          press="onEditLogPress" />
+                        <Button
+                          id="deleteLogButton"
+                          text="Delete"
+                          icon="sap-icon://delete"
+                          type="Transparent"
+                          enabled="{objectPage>/deleteEnabled}"
+                          press="onDeleteLogPress" />
+                        <SearchField
+                          id="logsSearchField"
+                          placeholder="Search entries"
+                          width="14rem"
+                          value="{objectPage>/searchQuery}"
+                          liveChange="onLogSearch" />
+                      </OverflowToolbar>
+                    </headerToolbar>
+                    <columns>
+                      <Column id="logSelectCol" width="3rem" hAlign="Center" />
+                      <Column id="logWorkCenterCol"><Text id="logWorkCenterColTitle" text="Work Center" /></Column>
+                      <Column id="logCategoryCol"><Text id="logCategoryColTitle" text="Category" /></Column>
+                      <Column id="logHoursCol" hAlign="End"><Text id="logHoursColTitle" text="Hours" /></Column>
+                      <Column id="logStartTimeCol"><Text id="logStartTimeColTitle" text="Start Time" /></Column>
+                      <Column id="logEndTimeCol"><Text id="logEndTimeColTitle" text="End Time" /></Column>
+                      <Column id="logRemarksCol"><Text id="logRemarksColTitle" text="Remarks" /></Column>
+                      <Column id="logStatusCol" hAlign="End"><Text id="logStatusColTitle" text="Status" /></Column>
+                    </columns>
+                    <items>
+                      <ColumnListItem id="logListItem">
+                        <cells>
+                          <CheckBox
+                            id="logRowCheckBox"
+                            selected="{objectPage>selected}"
+                            enabled="{objectPage>selectable}"
+                            select="onLogRowCheckChange" />
+                          <Text id="logWorkCenterCell" text="{objectPage>workCenter}" />
+                          <Text id="logCategoryCell" text="{objectPage>category}" />
+                          <Text id="logHoursCell" text="{objectPage>hours}" />
+                          <Text id="logStartTimeCell" text="{ path: 'objectPage>remarks', formatter: '.formatter.parseStartTime' }" />
+                          <Text id="logEndTimeCell" text="{ path: 'objectPage>remarks', formatter: '.formatter.parseEndTime' }" />
+                          <Text id="logRemarksCell" text="{ path: 'objectPage>remarks', formatter: '.formatter.cleanRemarks' }" />
+                          <ObjectStatus
+                            id="logStatusCell"
+                            text="{ path: 'objectPage>status', formatter: '.formatter.formatStatus' }"
+                            state="{ path: 'objectPage>status', formatter: '.formatter.statusState' }" />
+                        </cells>
+                      </ColumnListItem>
+                    </items>
+                  </Table>
+                </VBox>
+              </uxap:blocks>
+            </uxap:ObjectPageSubSection>
+          </uxap:subSections>
+        </uxap:ObjectPageSection>
+
+      </uxap:sections>
+    </uxap:ObjectPageLayout>
+  </Page>
+</mvc:View>

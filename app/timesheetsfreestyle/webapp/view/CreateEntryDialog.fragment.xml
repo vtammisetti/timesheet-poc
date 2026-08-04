@@ -131,7 +131,7 @@
       </VBox>
     </content>
     <beginButton>
-      <Button id="submitEntriesButton" text="Submit Entries" type="Emphasized" press="onSubmitEntries" />
+      <Button id="submitEntriesButton" text="Save as Draft" type="Emphasized" press="onSubmitEntries" />
     </beginButton>
     <endButton>
       <Button id="cancelDialogButton" text="Cancel" press="onCancelDialog" />

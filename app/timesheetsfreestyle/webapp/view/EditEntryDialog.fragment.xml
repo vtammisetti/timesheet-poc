@@ -1,0 +1,40 @@
+<core:FragmentDefinition
+  xmlns="sap.m"
+  xmlns:core="sap.ui.core"
+  xmlns:f="sap.ui.layout.form">
+  <Dialog
+    id="editEntryDialog"
+    title="Edit Draft"
+    contentWidth="32rem">
+    <content>
+      <f:SimpleForm id="editEntryForm" editable="true" layout="ResponsiveGridLayout" labelSpanL="4" labelSpanM="4" class="sapUiSmallMargin">
+        <f:content>
+          <Label id="editDateLabel" text="Date" />
+          <DatePicker id="editDateInput" value="{editEntry>/entryDate}" valueFormat="yyyy-MM-dd" displayFormat="medium" />
+
+          <Label id="editWorkCenterLabel" text="Work Center" />
+          <Input id="editWorkCenterInput" value="{editEntry>/workCenter}" />
+
+          <Label id="editCategoryLabel" text="Task Type" />
+          <Select id="editCategorySelect" selectedKey="{editEntry>/category}">
+            <core:Item id="editCategoryTRAI" key="TRAI" text="TRAI - Training" />
+            <core:Item id="editCategoryADMI" key="ADMI" text="ADMI - Admin" />
+            <core:Item id="editCategoryTRAV" key="TRAV" text="TRAV - Travel" />
+          </Select>
+
+          <Label id="editHoursLabel" text="Hour(s)" />
+          <Input id="editHoursInput" value="{editEntry>/hours}" type="Number" placeholder="0.00" />
+
+          <Label id="editRemarksLabel" text="Description" />
+          <TextArea id="editRemarksInput" value="{editEntry>/remarks}" rows="3" width="100%" />
+        </f:content>
+      </f:SimpleForm>
+    </content>
+    <beginButton>
+      <Button id="saveEditEntryButton" text="Save" type="Emphasized" press="onSubmitEditEntry" />
+    </beginButton>
+    <endButton>
+      <Button id="cancelEditEntryButton" text="Cancel" press="onCancelEditDialog" />
+    </endButton>
+  </Dialog>
+</core:FragmentDefinition>

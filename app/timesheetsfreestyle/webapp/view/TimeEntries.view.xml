@@ -81,13 +81,13 @@
           class="sapUiSmallMarginBottom">
           <lists>
             <FacetFilterList
-              id="statusFacetList"
-              title="Status"
-              key="status"
+              id="companyCodeFacetList"
+              title="Company Code"
+              key="companyCode"
               mode="MultiSelect"
-              items="{facets>/status}">
+              items="{facets>/companyCode}">
               <items>
-                <FacetFilterItem id="statusFacetItem" text="{facets>text}" key="{facets>key}" />
+                <FacetFilterItem id="companyCodeFacetItem" text="{facets>text}" key="{facets>key}" />
               </items>
             </FacetFilterList>
             <FacetFilterList
@@ -117,7 +117,7 @@
           id="entriesTable"
           growing="true"
           growingScrollToLoad="true"
-          items="{myModel>/entries}">
+          items="{myModel>/dailySummaries}">
           <noData>
             <IllustratedMessage
               id="entriesEmptyState"
@@ -125,12 +125,20 @@
               illustrationSize="Spot"
               title="{myModel>/emptyTitle}"
               description="{myModel>/emptyDescription}">
-              
+              <additionalContent>
+                <Button
+                  id="emptyStateCreateLogButton"
+                  text="Create Log"
+                  type="Emphasized"
+                  icon="sap-icon://add"
+                  visible="{myModel>/showCreateLogInEmptyState}"
+                  press="onCreateEntryPress" />
+              </additionalContent>
             </IllustratedMessage>
           </noData>
           <headerToolbar>
             <Toolbar id="entriesTableToolbar">
-              <Title id="tableHeader" text="Entries ({myModel>/entries/length})" />
+              <Title id="tableHeader" text="Days ({myModel>/dailySummaries/length})" />
               <ToolbarSpacer id="toolbarSpacer1" />
                <Button id="sortButton" icon="sap-icon://sort" type="Transparent" tooltip="Sort" press="onSortPress" />
               <Button id="settingsButton" icon="sap-icon://action-settings" type="Transparent" tooltip="Settings" />
@@ -139,34 +147,21 @@
                 placeholder="Search entries"
                 width="16rem"
                 liveChange="onSearch" />
-             
-              
             </Toolbar>
           </headerToolbar>
           <columns>
             <Column id="dateColumn"><Text id="dateColumnTitle" text="Date" /></Column>
-            <Column id="workCenterColumn"><Text id="workCenterColumnTitle" text="Work Center" /></Column>
-            <Column id="categoryColumn"><Text id="categoryColumnTitle" text="Category" /></Column>
-            <Column id="hoursColumn" hAlign="End"><Text id="hoursColumnTitle" text="Hours" /></Column>
-            <Column id="startTimeColumn"><Text id="startTimeColumnTitle" text="Start Time" /></Column>
-            <Column id="endTimeColumn"><Text id="endTimeColumnTitle" text="End Time" /></Column>
-            <Column id="remarksColumn"><Text id="remarksColumnTitle" text="Remarks" /></Column>
-            <Column id="statusColumn" hAlign="End"><Text id="statusColumnTitle" text="Status" /></Column>
+            <Column id="logsColumn" hAlign="Center"><Text id="logsColumnTitle" text="Logs" /></Column>
+            <Column id="hoursColumn" hAlign="End"><Text id="hoursColumnTitle" text="Total Hours" /></Column>
+            <Column id="companyCodeColumn" hAlign="End"><Text id="companyCodeColumnTitle" text="Company Code" /></Column>
           </columns>
           <items>
-            <ColumnListItem id="entryListItem" type="Navigation">
+            <ColumnListItem id="entryListItem" type="Navigation" press="onDailySummaryPress">
               <cells>
-                <ObjectIdentifier id="entryDateCell" title="{ path: 'myModel>entryDate', formatter: '.formatter.formatDate' }" />
-                <Text id="entryWorkCenterCell" text="{myModel>workCenter}" />
-                <Text id="entryCategoryCell" text="{myModel>category}" />
-                <Text id="entryHoursCell" text="{myModel>hours}" />
-                <Text id="entryStartTimeCell" text="{ path: 'myModel>remarks', formatter: '.formatter.parseStartTime' }" />
-                <Text id="entryEndTimeCell" text="{ path: 'myModel>remarks', formatter: '.formatter.parseEndTime' }" />
-                <Text id="entryRemarksCell" text="{ path: 'myModel>remarks', formatter: '.formatter.cleanRemarks' }" />
-                <ObjectStatus
-                  id="entryStatusCell"
-                  text="{ path: 'myModel>status', formatter: '.formatter.formatStatus' }"
-                  state="{ path: 'myModel>status', formatter: '.formatter.statusState' }" />
+                <ObjectIdentifier id="entryDateCell" title="{ path: 'myModel>isoDate', formatter: '.formatter.formatDate' }" />
+                <Text id="entryLogCountCell" text="{myModel>logCount}" />
+                <Text id="entryHoursCell" text="{myModel>totalHours}" />
+                <Text id="entryCompanyCodeCell" text="{myModel>companyCode}" />
               </cells>
             </ColumnListItem>
           </items>

@@ -56,7 +56,7 @@
     </tnt:sideContent>
 
     <tnt:mainContents>
-      <mvc:XMLView viewName="timesheetsfreestyle.view.TimeEntries" height="100%" />
+      <NavContainer id="appNavContainer" height="100%" />
     </tnt:mainContents>
   </tnt:ToolPage>
 </mvc:View>

@@ -48,7 +48,9 @@
       "minUI5Version": "1.150.0",
       "libs": {
         "sap.m": {},
-        "sap.ui.core": {}
+        "sap.ui.core": {},
+        "sap.uxap": {},
+        "sap.ui.layout": {}
       }
     },
     "contentDensities": {
@@ -79,12 +81,46 @@
         }
       ]
     },
-    
+
     "rootView": {
       "viewName": "timesheetsfreestyle.view.App",
       "type": "XML",
       "id": "App",
       "async": true
+    },
+
+    "routing": {
+      "config": {
+        "routerClass": "sap.m.routing.Router",
+        "viewType": "XML",
+        "viewPath": "timesheetsfreestyle.view",
+        "controlId": "appNavContainer",
+        "controlAggregation": "pages",
+        "transition": "slide",
+        "async": true
+      },
+      "routes": [
+        {
+          "pattern": "",
+          "name": "timeEntries",
+          "target": "timeEntries"
+        },
+        {
+          "pattern": "objectPage/{date}",
+          "name": "objectPage",
+          "target": "objectPage"
+        }
+      ],
+      "targets": {
+        "timeEntries": {
+          "viewName": "TimeEntries",
+          "viewId": "timeEntries"
+        },
+        "objectPage": {
+          "viewName": "ObjectPage",
+          "viewId": "objectPage"
+        }
+      }
     }
   }
 }

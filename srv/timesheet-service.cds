@@ -31,12 +31,32 @@ service TimesheetService {
   remarks      : String
 ) returns String;
 
+action updateTimeEntry(
+  employeeId   : String,
+  companyCode  : String,
+  record       : String,
+  entryDate    : Date,
+  workCenter   : String,
+  category     : String,
+  startTime    : String,   // e.g. "08:00 AM"
+  endTime      : String,   // e.g. "11:30 AM"
+  hours        : Decimal(5,2),
+  remarks      : String
+) returns String;
+
+action deleteTimeEntry(
+  employeeId   : String,
+  companyCode  : String,
+  record       : String
+) returns String;
+
 function getMyTimeEntries(
   employeeId : String,
   fromDate   : Date,
   toDate     : Date
 ) returns array of {
   employeeId  : String;
+  companyCode : String;
   entryDate   : String;
   status      : String;
   workCenter  : String;

@@ -49,8 +49,12 @@ sap.ui.define([
     },
 
     _getTimeEntriesController: function () {
-      var oMainContent = this.byId("app").getMainContents()[0];
-      return oMainContent && oMainContent.getController ? oMainContent.getController() : null;
+      var oNavContainer = this.byId("appNavContainer");
+      var oCurrentPage = oNavContainer && oNavContainer.getCurrentPage();
+      if (!oCurrentPage || oCurrentPage.getId() !== this.getOwnerComponent().createId("timeEntries")) {
+        return null;
+      }
+      return oCurrentPage.getController();
     },
 
     onUserNamePress: function (oEvent) {
@@ -66,8 +70,10 @@ sap.ui.define([
       this._oMenu.openBy(oEvent.getSource());
     },
 
-    onNavItemSelect: function () {
-      // Only one nav item exists right now
+    onNavItemSelect: function (oEvent) {
+      if (oEvent.getParameter("item").getKey() === "myTimesheets") {
+        this.getOwnerComponent().getRouter().navTo("timeEntries");
+      }
     }
   });
 });
