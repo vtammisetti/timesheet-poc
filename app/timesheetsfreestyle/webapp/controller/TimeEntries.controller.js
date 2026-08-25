@@ -218,7 +218,8 @@ sap.ui.define([
           isoDate: oDay.isoDate,
           totalHours: oDay.totalHours.toFixed(2),
           logCount: oDay.logCount,
-          companyCode: oDay.logs[0] ? oDay.logs[0].companyCode : ""
+          companyCode: oDay.logs[0] ? oDay.logs[0].companyCode : "",
+          status: formatter.overallStatusCode(oDay.logs)
         };
       });
     },

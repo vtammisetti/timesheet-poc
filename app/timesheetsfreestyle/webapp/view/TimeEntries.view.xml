@@ -154,6 +154,7 @@
             <Column id="logsColumn" hAlign="Center"><Text id="logsColumnTitle" text="Logs" /></Column>
             <Column id="hoursColumn" hAlign="End"><Text id="hoursColumnTitle" text="Total Hours" /></Column>
             <Column id="companyCodeColumn" hAlign="End"><Text id="companyCodeColumnTitle" text="Company Code" /></Column>
+            <Column id="statusColumn" hAlign="End"><Text id="statusColumnTitle" text="Overall Status" /></Column>
           </columns>
           <items>
             <ColumnListItem id="entryListItem" type="Navigation" press="onDailySummaryPress">
@@ -162,6 +163,10 @@
                 <Text id="entryLogCountCell" text="{myModel>logCount}" />
                 <Text id="entryHoursCell" text="{myModel>totalHours}" />
                 <Text id="entryCompanyCodeCell" text="{myModel>companyCode}" />
+                <ObjectStatus
+                  id="entryStatusCell"
+                  text="{ path: 'myModel>status', formatter: '.formatter.formatStatus' }"
+                  state="{ path: 'myModel>status', formatter: '.formatter.statusState' }" />
               </cells>
             </ColumnListItem>
           </items>

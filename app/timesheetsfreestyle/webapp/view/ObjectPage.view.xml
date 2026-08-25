@@ -2,7 +2,7 @@
   controllerName="timesheetsfreestyle.controller.ObjectPage"
   xmlns:mvc="sap.ui.core.mvc"
   xmlns:uxap="sap.uxap"
-  xmlns:f="sap.ui.layout.form"
+  xmlns:l="sap.ui.layout"
   xmlns="sap.m">
   <Page id="objectPage" showNavButton="true" navButtonPress="onNavBack" title="Timesheet Details">
     <footer>
@@ -22,21 +22,8 @@
       <uxap:headerTitle>
         <uxap:ObjectPageHeader
           id="objectPageHeader"
-          objectTitle="{objectPage>/displayDate}"
-          objectSubtitle="{objectPage>/employeeLabel}" />
+          objectTitle="{objectPage>/displayDate}" />
       </uxap:headerTitle>
-
-      <uxap:headerContent>
-        <VBox id="objectPageHeaderContentVBox">
-          <ObjectNumber id="objectPageTotalHours" number="{objectPage>/totalHours}" unit="hrs" emphasized="true" />
-          <Text id="objectPageLogCountText" text="{objectPage>/logCount} entries recorded" class="sapUiTinyMarginTop" />
-          <ObjectStatus
-            id="objectPageOverallStatus"
-            text="{objectPage>/overallStatusText}"
-            state="{objectPage>/overallStatusState}"
-            class="sapUiTinyMarginTop" />
-        </VBox>
-      </uxap:headerContent>
 
       <uxap:sections>
 
@@ -44,30 +31,41 @@
           <uxap:subSections>
             <uxap:ObjectPageSubSection id="generalInfoSubSection">
               <uxap:blocks>
-                <f:SimpleForm id="generalInfoForm" editable="false" layout="ResponsiveGridLayout" labelSpanL="4" labelSpanM="4">
-                  <f:content>
+                <l:Grid id="generalInfoGrid" defaultSpan="L4 M6 S12" vSpacing="1" hSpacing="2">
+                  <VBox id="generalInfoDateBox">
                     <Label id="generalInfoDateLabel" text="Date" />
-                    <Text id="generalInfoDateValue" text="{objectPage>/displayDate}" />
+                    <Input id="generalInfoDateValue" value="{objectPage>/displayDate}" editable="false" />
+                  </VBox>
 
+                  <VBox id="generalInfoEmployeeBox">
                     <Label id="generalInfoEmployeeLabel" text="Employee" />
-                    <Text id="generalInfoEmployeeValue" text="{objectPage>/employeeLabel} ({objectPage>/employeeId})" />
+                    <Input id="generalInfoEmployeeValue" value="{objectPage>/employeeLabel} ({objectPage>/employeeId})" editable="false" />
+                  </VBox>
 
+                  <VBox id="generalInfoCompanyCodeBox">
                     <Label id="generalInfoCompanyCodeLabel" text="Company Code" />
-                    <Text id="generalInfoCompanyCodeValue" text="{objectPage>/companyCode}" />
+                    <Input id="generalInfoCompanyCodeValue" value="{objectPage>/companyCode}" editable="false" />
+                  </VBox>
 
+                  <VBox id="generalInfoTotalHoursBox">
                     <Label id="generalInfoTotalHoursLabel" text="Total Hours" />
-                    <Text id="generalInfoTotalHoursValue" text="{objectPage>/totalHours}" />
+                    <Input id="generalInfoTotalHoursValue" value="{objectPage>/totalHours}" editable="false" />
+                  </VBox>
 
+                  <VBox id="generalInfoLogCountBox">
                     <Label id="generalInfoLogCountLabel" text="Number of Entries" />
-                    <Text id="generalInfoLogCountValue" text="{objectPage>/logCount}" />
+                    <Input id="generalInfoLogCountValue" value="{objectPage>/logCount}" editable="false" />
+                  </VBox>
 
+                  <VBox id="generalInfoStatusBox">
                     <Label id="generalInfoStatusLabel" text="Overall Status" />
                     <ObjectStatus
                       id="generalInfoStatusValue"
                       text="{objectPage>/overallStatusText}"
-                      state="{objectPage>/overallStatusState}" />
-                  </f:content>
-                </f:SimpleForm>
+                      state="{objectPage>/overallStatusState}"
+                      class="sapUiTinyMarginTop" />
+                  </VBox>
+                </l:Grid>
               </uxap:blocks>
             </uxap:ObjectPageSubSection>
           </uxap:subSections>
