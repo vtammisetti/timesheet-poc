@@ -22,6 +22,7 @@ async function postToS4(payload) {
     throw new Error(`No CSRF token returned. Headers: ${JSON.stringify(tokenResp.headers)}`);
   }
 
+  // S4's CSRF token is valid for 30 minutes, but the cookies are only valid for 5 minutes. If the cookies expire, S4 will return a 403 with "CSRF token validation failed" even if the token itself is still valid. So we must always send both the token and the cookies together.
   const postResp = await axios.post(`${S4_BASE}/TimeSheetEntryCollection`, payload, {
     auth,
     headers: {
@@ -45,10 +46,13 @@ function s4ErrorMessage(err) {
   return oError?.message?.value || JSON.stringify(err.response?.data || err.message);
 }
 
+
+// Service implementation
+// Note: the S4 connection is established once at service startup, not per request, to avoid the 5-minute cookie expiration issue.
 module.exports = cds.service.impl(async function () {
 
   const S4 = await cds.connect.to('API_MANAGE_WORKFORCE_TIMESHEET');
-
+// The S4 connection is used only for the testS4Connection handler; all other handlers use postToS4() directly.
   this.on('testS4Connection', async () => {
   try {
     const S4 = await cds.connect.to('API_MANAGE_WORKFORCE_TIMESHEET');
@@ -65,6 +69,7 @@ module.exports = cds.service.impl(async function () {
   }
 });
 
+//createTimeEntry action is used to create a new time entry in S4 system.
   this.on('createTimeEntry', async (req) => {
     const {
       employeeId, companyCode, entryDate,
@@ -112,7 +117,7 @@ module.exports = cds.service.impl(async function () {
       return `ERROR: ${JSON.stringify(detail)}`;
     }
   });
-
+//update the entry in S4 system. The record parameter is the TimeSheetRecord of the time entry to be updated.
   this.on('updateTimeEntry', async (req) => {
     const {
       employeeId, companyCode, record, entryDate,
@@ -161,6 +166,7 @@ module.exports = cds.service.impl(async function () {
     }
   });
 
+//delete the entry, but create a new record in S4 system. The record parameter is the TimeSheetRecord of the time entry to be deleted.
   this.on('deleteTimeEntry', async (req) => {
     const { employeeId, companyCode, record } = req.data;
 
@@ -209,6 +215,8 @@ module.exports = cds.service.impl(async function () {
     // that's someone else's predecessor is a stale version and must be hidden. A
     // live record with 0 hours is itself the tombstone left behind by a delete, so
     // its whole chain is dropped too.
+
+    // Build a set of all predecessor records, then filter out any record that is in that set.
     const supersededRecords = new Set(
       result.map(r => r.TimeSheetPredecessorRecord).filter(Boolean)
     );
@@ -220,7 +228,7 @@ module.exports = cds.service.impl(async function () {
       const d = r.TimeSheetDate?.slice(0, 10);
       return (!fromDate || d >= fromDate) && (!toDate || d <= toDate);
     });
-
+// Map the filtered records to the desired output format
     return filtered.map(r => ({
       employeeId:  r.PersonWorkAgreementExternalID,
       companyCode: r.CompanyCode,
@@ -232,7 +240,6 @@ module.exports = cds.service.impl(async function () {
       remarks:     r.TimeSheetDataFields?.TimeSheetNote,
       record:      r.TimeSheetRecord
     }));
-
   } catch (err) {
     req.error(500, `S4 read failed: ${err.message}`);
   }
