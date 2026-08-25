@@ -1,10 +1,12 @@
 using poc.timesheet as db from '../db/schema';
 using { API_MANAGE_WORKFORCE_TIMESHEET as external } from './external/API_MANAGE_WORKFORCE_TIMESHEET';
 
+//local entities for projections
 service TimesheetService {
   entity Employees   as projection on db.Employees;
   entity TimeEntries as projection on db.TimeEntries;
 
+//external entities for projections - renaming the fields to match the local entities(friendly to use in the UI)
   @readonly
   entity S4TimeEntries as projection on external.TimeSheetEntryCollection {
     key PersonWorkAgreementExternalID as employeeId,
@@ -18,7 +20,11 @@ service TimesheetService {
         TimeSheetDataFields.TimeSheetNote           as remarks
   };
 
+//actions and functions
+//testS4Connection function is used to test the connection to the S4 system.
   function testS4Connection() returns String;
+
+//createTimeEntry action is used to create a new time entry in S4 system.
   action createTimeEntry(
   employeeId   : String,
   companyCode  : String,
@@ -31,6 +37,7 @@ service TimesheetService {
   remarks      : String
 ) returns String;
 
+//updateTimeEntry action is used to update the time entry in S4 system. The record parameter is the TimeSheetRecord of the time entry to be updated.
 action updateTimeEntry(
   employeeId   : String,
   companyCode  : String,
@@ -44,12 +51,14 @@ action updateTimeEntry(
   remarks      : String
 ) returns String;
 
+//deleteTimeEntry action is used to delete the time entry in S4 system. The record parameter is the TimeSheetRecord of the time entry to be deleted.
 action deleteTimeEntry(
   employeeId   : String,
   companyCode  : String,
   record       : String
 ) returns String;
 
+//getMyTimeEntries function is used to get the time entries of the logged-in user from S4 system. The function takes employeeId, fromDate and toDate as parameters and returns an array of time entries.
 function getMyTimeEntries(
   employeeId : String,
   fromDate   : Date,
