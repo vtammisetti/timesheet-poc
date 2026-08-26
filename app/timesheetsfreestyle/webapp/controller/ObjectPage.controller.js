@@ -234,18 +234,32 @@ sap.ui.define([
       this._pEditDialog.then(function (oDialog) { oDialog.close(); });
     },
 
+    // Hours are "H.MM" (e.g. "8.30" = 8h 30m), so overflow minutes need to carry
+    // into the next hour — e.g. "5.80" -> "6.20". Same rule as the Create dialog.
+    onEditHoursChange: function (oEvent) {
+      var oBinding = oEvent.getSource().getBinding("value");
+      if (!oBinding) return;
+      oBinding.setValue(formatter.normalizeHours(oEvent.getSource().getValue()));
+    },
+
     // Edit only ever opens for a Draft (onEditLogPress guards on isDraft) — once a
     // log is real, it's read-only in this app, so there's no backend call here.
     onSubmitEditEntry: function () {
       var that = this;
 
       this._pEditDialog.then(function (oDialog) {
-        var oData = oDialog.getModel("editEntry").getData();
+        var oModel = oDialog.getModel("editEntry");
+        var oData = oModel.getData();
 
         if (!oData.entryDate || !oData.workCenter || !oData.category || !oData.hours) {
           MessageBox.error("Date, Work Center, Task Type, and Hours are required.");
           return;
         }
+
+        // Safety net in case Save is reached without the Hours field ever firing
+        // its own change/blur (e.g. Enter submits before carry-over normalizes it).
+        oData.hours = formatter.normalizeHours(oData.hours);
+        oModel.setProperty("/hours", oData.hours);
 
         that._saveDraftEdit(oDialog, oData);
       });

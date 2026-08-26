@@ -49,6 +49,31 @@ sap.ui.define([], function () {
       return sRemarks.replace(TSAPP_PATTERN, "").trim();
     },
 
+    // Hours are entered as "H.MM" (e.g. "8.30" = 8h 30m), matching the timesheet's
+    // hh:mm convention — not a decimal fraction. So "4.80" means 4h + 80m, which
+    // carries into 5h 20m, not a literal 4.8 hours. Shared by the Create and Edit
+    // entry dialogs so both carry minutes the same way.
+    hoursToMinutes: function (vValue) {
+      if (vValue === undefined || vValue === null || vValue === "") return 0;
+      var aParts = String(vValue).split(".");
+      var iHours = parseInt(aParts[0], 10);
+      var iMinutes = aParts.length > 1 ? parseInt(aParts[1], 10) : 0;
+      if (isNaN(iHours)) iHours = 0;
+      if (isNaN(iMinutes)) iMinutes = 0;
+      return iHours * 60 + iMinutes;
+    },
+
+    minutesToHours: function (iTotalMinutes) {
+      var iHours = Math.floor(iTotalMinutes / 60);
+      var iMinutes = iTotalMinutes % 60;
+      return iHours + "." + (iMinutes < 10 ? "0" + iMinutes : iMinutes);
+    },
+
+    // Re-writes a raw "H.MM" input through the carry-over rule (e.g. "4.80" -> "5.20").
+    normalizeHours: function (vValue) {
+      return this.minutesToHours(this.hoursToMinutes(vValue));
+    },
+
     // Given a list of logs (each with a .status code), returns the "overall" status
     // code for the group (e.g. all logs recorded on the same date), in priority order:
     // 1. Any Draft means the day still needs the user's attention, so it wins outright.

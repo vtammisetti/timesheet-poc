@@ -574,8 +574,13 @@ onDeleteDayRow: function (oEvent) {
   }.bind(this));
 },
 
-onDayHoursChange: function () {
+onDayHoursChange: function (oEvent) {
   this._pDialog.then(function (oDialog) {
+    // Only normalize on blur/enter (change), not on every keystroke (liveChange) —
+    // reformatting mid-type would fight the user's typing.
+    if (oEvent.getId() === "change") {
+      this._normalizeHoursInput(oEvent.getSource());
+    }
     this._refreshDayTotal(oDialog);
   }.bind(this));
 },
@@ -583,16 +588,22 @@ onDayHoursChange: function () {
 _refreshDayTotal: function (oDialog) {
   var oModel = oDialog.getModel("entryDialog");
   var aRows = oModel.getProperty("/dayRows");
-  var fTotal = 0;
+  var iTotalMinutes = 0;
 
   aRows.forEach(function (oRow) {
-    var fHours = parseFloat(oRow.hours);
-    if (!isNaN(fHours)) {
-      fTotal += fHours;
-    }
+    iTotalMinutes += formatter.hoursToMinutes(oRow.hours);
   });
 
-  oModel.setProperty("/dayTotal", fTotal.toFixed(2));
+  oModel.setProperty("/dayTotal", formatter.minutesToHours(iTotalMinutes));
+},
+
+// Re-writes an hours Input's bound value through the H.MM carry-over rule
+// (e.g. "4.80" -> "5.20") right in the model, regardless of whether it's a
+// day row's flat "hours" or a week row's nested "hoursByDay/dayN".
+_normalizeHoursInput: function (oInput) {
+  var oBinding = oInput.getBinding("value");
+  if (!oBinding) return;
+  oBinding.setValue(formatter.normalizeHours(oInput.getValue()));
 },
 
 onAddWeekRow: function () {
@@ -620,8 +631,11 @@ onDeleteWeekRow: function (oEvent) {
   }.bind(this));
 },
 
-onWeekHoursChange: function () {
+onWeekHoursChange: function (oEvent) {
   this._pDialog.then(function (oDialog) {
+    if (oEvent.getId() === "change") {
+      this._normalizeHoursInput(oEvent.getSource());
+    }
     this._refreshWeekTotal(oDialog);
   }.bind(this));
 },
@@ -629,18 +643,15 @@ onWeekHoursChange: function () {
 _refreshWeekTotal: function (oDialog) {
   var oModel = oDialog.getModel("entryDialog");
   var aRows = oModel.getProperty("/weekRows");
-  var fTotal = 0;
+  var iTotalMinutes = 0;
 
   aRows.forEach(function (oRow) {
     Object.keys(oRow.hoursByDay).forEach(function (sKey) {
-      var fHours = parseFloat(oRow.hoursByDay[sKey]);
-      if (!isNaN(fHours)) {
-        fTotal += fHours;
-      }
+      iTotalMinutes += formatter.hoursToMinutes(oRow.hoursByDay[sKey]);
     });
   });
 
-  oModel.setProperty("/weekTotal", fTotal.toFixed(2));
+  oModel.setProperty("/weekTotal", formatter.minutesToHours(iTotalMinutes));
 },
 
 onCancelDialog: function () {
@@ -713,7 +724,6 @@ onSubmitEntries: function () {
 // unmodified. No "record" id here anymore — the server assigns the real one on
 // create, and Component#addDraftEntry maps the returned ID back onto "record".
 _buildDraftEntry: function (oDialogData, sIsoDate, oRow) {
-  var fHours = parseFloat(oRow.hours);
   return {
     employeeId: oDialogData.employeeId,
     companyCode: oDialogData.companyCode,
@@ -721,7 +731,7 @@ _buildDraftEntry: function (oDialogData, sIsoDate, oRow) {
     status: "DRAFT",
     workCenter: oRow.workCenter,
     category: oRow.category,
-    hours: fHours.toFixed(2),
+    hours: formatter.normalizeHours(oRow.hours),
     remarks: oRow.remarks || "",
     isDraft: true
   };
