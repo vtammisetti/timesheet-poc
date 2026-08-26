@@ -5,7 +5,7 @@
   <Dialog
     id="createEntryDialog"
     title="Record Timesheet Entries"
-    contentWidth="78rem">
+    contentWidth="65rem">
     <content>
       <VBox id="dialogRootVBox" class="sapUiSmallMargin">
 
@@ -72,14 +72,19 @@
           items="{entryDialog>/dayRows}"
           noDataText="No rows yet">
           <columns>
-            <Column id="dayRowNumCol"><Text id="dayRowNumColTitle" text="S.No" /></Column>
-            <Column id="dayRowCategoryCol"><Text id="dayRowCategoryColTitle" text="Task Type" /></Column>
-            <Column id="dayRowWorkCenterCol"><Text id="dayRowWorkCenterColTitle" text="Work Center" /></Column>
+            <!-- Explicit widths: sap.m.Table is fixedLayout by default, so width-less
+                 columns split the table evenly and left a gap where the hidden time
+                 columns used to be. Description is the only flexible one. -->
+            <Column id="dayRowNumCol" width="4rem"><Text id="dayRowNumColTitle" text="S.No" /></Column>
+            <Column id="dayRowCategoryCol" width="11rem"><Text id="dayRowCategoryColTitle" text="Task Type" /></Column>
+            <Column id="dayRowWorkCenterCol" width="10rem"><Text id="dayRowWorkCenterColTitle" text="Work Center" /></Column>
             <Column id="dayRowRemarksCol"><Text id="dayRowRemarksColTitle" text="Description" /></Column>
-            <Column id="dayRowHoursCol" hAlign="End"><Text id="dayRowHoursColTitle" text="Hour(s)" /></Column>
-            <Column id="dayRowStartTimeCol"><Text id="dayRowStartTimeColTitle" text="Start Time" /></Column>
-            <Column id="dayRowEndTimeCol"><Text id="dayRowEndTimeColTitle" text="End Time" /></Column>
-            <Column id="dayRowActionCol" />
+            <Column id="dayRowHoursCol" width="7rem" hAlign="End"><Text id="dayRowHoursColTitle" text="Hour(s)" /></Column>
+            <!-- Start/End Time hidden for now — see the matching cells below. Kept
+                 rather than removed so re-enabling is just visible="true". -->
+            <Column id="dayRowStartTimeCol" visible="false"><Text id="dayRowStartTimeColTitle" text="Start Time" /></Column>
+            <Column id="dayRowEndTimeCol" visible="false"><Text id="dayRowEndTimeColTitle" text="End Time" /></Column>
+            <Column id="dayRowActionCol" width="3.5rem" hAlign="Center" />
           </columns>
           <items>
             <ColumnListItem id="dayRowItem">

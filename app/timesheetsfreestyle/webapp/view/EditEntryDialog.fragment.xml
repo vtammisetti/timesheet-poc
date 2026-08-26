@@ -28,11 +28,14 @@
           <Label id="editHoursLabel" text="Hour(s)" />
           <Input id="editHoursInput" value="{editEntry>/hours}" type="Number" placeholder="0.00" change="onEditHoursChange" />
 
-          <Label id="editStartTimeLabel" text="Start Time" />
-          <TimePicker id="editStartTimeInput" value="{editEntry>/startTime}" valueFormat="hh:mm a" displayFormat="hh:mm a" placeholder="Select start time" />
+          <!-- Start/End Time hidden for now. Both label and field need visible="false"
+               in a SimpleForm. The bindings stay live, so an existing entry's TSAPP
+               time tag is still read in and written back out untouched on save. -->
+          <Label id="editStartTimeLabel" text="Start Time" visible="false" />
+          <TimePicker id="editStartTimeInput" value="{editEntry>/startTime}" valueFormat="hh:mm a" displayFormat="hh:mm a" placeholder="Select start time" visible="false" />
 
-          <Label id="editEndTimeLabel" text="End Time" />
-          <TimePicker id="editEndTimeInput" value="{editEntry>/endTime}" valueFormat="hh:mm a" displayFormat="hh:mm a" placeholder="Select end time" />
+          <Label id="editEndTimeLabel" text="End Time" visible="false" />
+          <TimePicker id="editEndTimeInput" value="{editEntry>/endTime}" valueFormat="hh:mm a" displayFormat="hh:mm a" placeholder="Select end time" visible="false" />
         </f:content>
       </f:SimpleForm>
     </content>

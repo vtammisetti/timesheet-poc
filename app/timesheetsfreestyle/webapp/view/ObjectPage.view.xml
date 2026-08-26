@@ -150,14 +150,25 @@
                       </OverflowToolbar>
                     </headerToolbar>
                     <columns>
+                      <!-- Widths are explicit because sap.m.Table defaults to
+                           fixedLayout="true": any column left without one just takes an
+                           equal share of the table, which left a wide empty gap once the
+                           time columns were hidden. Remarks is deliberately the only
+                           width-less column, so it absorbs the remaining space. -->
                       <Column id="logSelectCol" width="3rem" hAlign="Center" />
-                      <Column id="logWorkCenterCol"><Text id="logWorkCenterColTitle" text="Work Center" /></Column>
-                      <Column id="logCategoryCol"><Text id="logCategoryColTitle" text="Category" /></Column>
-                      <Column id="logHoursCol" hAlign="End"><Text id="logHoursColTitle" text="Hours" /></Column>
-                      <Column id="logStartTimeCol"><Text id="logStartTimeColTitle" text="Start Time" /></Column>
-                      <Column id="logEndTimeCol"><Text id="logEndTimeColTitle" text="End Time" /></Column>
-                      <Column id="logRemarksCol"><Text id="logRemarksColTitle" text="Remarks" /></Column>
-                      <Column id="logStatusCol" hAlign="End"><Text id="logStatusColTitle" text="Status" /></Column>
+                      <Column id="logWorkCenterCol" width="9rem"><Text id="logWorkCenterColTitle" text="Work Center" /></Column>
+                      <Column id="logCategoryCol" width="7rem"><Text id="logCategoryColTitle" text="Category" /></Column>
+                      <Column id="logHoursCol" width="6rem" hAlign="End"><Text id="logHoursColTitle" text="Hours" /></Column>
+                      <!-- Start/End Time hidden for now. The columns and their cells are
+                           kept (and still bound) so re-enabling is just visible="true";
+                           the TSAPP tag in remarks is unaffected either way. -->
+                      <Column id="logStartTimeCol" visible="false"><Text id="logStartTimeColTitle" text="Start Time" /></Column>
+                      <Column id="logEndTimeCol" visible="false"><Text id="logEndTimeColTitle" text="End Time" /></Column>
+                      <!-- Hours is right-aligned, so its value ends hard against the left
+                           edge of Remarks and the two read as one run of text. The same
+                           margin is on the header and the cell below so they stay aligned. -->
+                      <Column id="logRemarksCol"><Text id="logRemarksColTitle" text="Remarks" class="sapUiSmallMarginBegin" /></Column>
+                      <Column id="logStatusCol" width="9rem" hAlign="End"><Text id="logStatusColTitle" text="Status" /></Column>
                     </columns>
                     <items>
                       <ColumnListItem id="logListItem">
@@ -172,7 +183,7 @@
                           <Text id="logHoursCell" text="{objectPage>hours}" />
                           <Text id="logStartTimeCell" text="{ path: 'objectPage>remarks', formatter: '.formatter.parseStartTime' }" />
                           <Text id="logEndTimeCell" text="{ path: 'objectPage>remarks', formatter: '.formatter.parseEndTime' }" />
-                          <Text id="logRemarksCell" text="{ path: 'objectPage>remarks', formatter: '.formatter.cleanRemarks' }" />
+                          <Text id="logRemarksCell" text="{ path: 'objectPage>remarks', formatter: '.formatter.cleanRemarks' }" class="sapUiSmallMarginBegin" />
                           <ObjectStatus
                             id="logStatusCell"
                             text="{ path: 'objectPage>status', formatter: '.formatter.formatStatus' }"
