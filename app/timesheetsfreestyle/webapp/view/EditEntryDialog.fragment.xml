@@ -5,37 +5,53 @@
   <Dialog
     id="editEntryDialog"
     title="Edit Draft"
-    contentWidth="32rem">
+    contentWidth="32rem"
+    horizontalScrolling="false">
     <content>
-      <f:SimpleForm id="editEntryForm" editable="true" layout="ResponsiveGridLayout" labelSpanL="4" labelSpanM="4" class="sapUiSmallMargin">
+      <!-- labelSpan is 12 at every breakpoint so each label takes a full row and its field
+           wraps underneath — labels on top, at any dialog width, rather than only at the
+           narrow breakpoint where that happened by default.
+           The overflow that caused the horizontal scrollbar is handled separately:
+           columnsL defaults to 2, so the form was sized for a two-column layout it never
+           had; the form's own padding replaces a sapUiSmallMargin class that fought the
+           width="100%" fields inside the dialog's padding; and horizontalScrolling="false"
+           on the Dialog stops it returning. Fields carry width="100%" so they fill the row
+           uniformly — Select in particular sizes to its content otherwise. -->
+      <f:SimpleForm
+        id="editEntryForm"
+        editable="true"
+        layout="ResponsiveGridLayout"
+        columnsXL="1" columnsL="1" columnsM="1"
+        labelSpanXL="12" labelSpanL="12" labelSpanM="12" labelSpanS="12"
+        adjustLabelSpan="false">
         <f:content>
           <Label id="editDateLabel" text="Date" />
-          <DatePicker id="editDateInput" value="{editEntry>/entryDate}" valueFormat="yyyy-MM-dd" displayFormat="medium" />
+          <DatePicker id="editDateInput" value="{editEntry>/entryDate}" valueFormat="yyyy-MM-dd" displayFormat="medium" width="100%" />
 
           <Label id="editWorkCenterLabel" text="Work Center" />
-          <Input id="editWorkCenterInput" value="{editEntry>/workCenter}" />
+          <Input id="editWorkCenterInput" value="{editEntry>/workCenter}" width="100%" />
 
           <Label id="editCategoryLabel" text="Task Type" />
-          <Select id="editCategorySelect" selectedKey="{editEntry>/category}">
+          <Select id="editCategorySelect" selectedKey="{editEntry>/category}" width="100%">
             <core:Item id="editCategoryTRAI" key="TRAI" text="TRAI - Training" />
             <core:Item id="editCategoryADMI" key="ADMI" text="ADMI - Admin" />
             <core:Item id="editCategoryTRAV" key="TRAV" text="TRAV - Travel" />
           </Select>
 
           <Label id="editRemarksLabel" text="Description" />
-          <TextArea id="editRemarksInput" value="{editEntry>/remarks}" rows="3" width="100%" />
+          <TextArea id="editRemarksInput" value="{editEntry>/remarks}" rows="3" width="100%" growing="false" />
 
           <Label id="editHoursLabel" text="Hour(s)" />
-          <Input id="editHoursInput" value="{editEntry>/hours}" type="Number" placeholder="0.00" change="onEditHoursChange" />
+          <Input id="editHoursInput" value="{editEntry>/hours}" type="Number" placeholder="0.00" change="onEditHoursChange" width="100%" />
 
           <!-- Start/End Time hidden for now. Both label and field need visible="false"
                in a SimpleForm. The bindings stay live, so an existing entry's TSAPP
                time tag is still read in and written back out untouched on save. -->
           <Label id="editStartTimeLabel" text="Start Time" visible="false" />
-          <TimePicker id="editStartTimeInput" value="{editEntry>/startTime}" valueFormat="hh:mm a" displayFormat="hh:mm a" placeholder="Select start time" visible="false" />
+          <TimePicker id="editStartTimeInput" value="{editEntry>/startTime}" valueFormat="hh:mm a" displayFormat="hh:mm a" placeholder="Select start time" visible="false" width="100%" />
 
           <Label id="editEndTimeLabel" text="End Time" visible="false" />
-          <TimePicker id="editEndTimeInput" value="{editEntry>/endTime}" valueFormat="hh:mm a" displayFormat="hh:mm a" placeholder="Select end time" visible="false" />
+          <TimePicker id="editEndTimeInput" value="{editEntry>/endTime}" valueFormat="hh:mm a" displayFormat="hh:mm a" placeholder="Select end time" visible="false" width="100%" />
         </f:content>
       </f:SimpleForm>
     </content>
