@@ -3,6 +3,25 @@ sap.ui.define([], function () {
 
   var TSAPP_PATTERN = /\[TSAPP_START:(.+?)\|TSAPP_END:(.+?)\]\s*/;
 
+  // Declared at module level, not as members below, so they never depend on what
+  // "this" happens to be — these are used both as plain calls from controllers and
+  // as XML binding formatters, where the invocation context is not the formatter object.
+  function hoursToMinutes(vValue) {
+    if (vValue === undefined || vValue === null || vValue === "") return 0;
+    var aParts = String(vValue).split(".");
+    var iHours = parseInt(aParts[0], 10);
+    var iMinutes = aParts.length > 1 ? parseInt(aParts[1], 10) : 0;
+    if (isNaN(iHours)) iHours = 0;
+    if (isNaN(iMinutes)) iMinutes = 0;
+    return iHours * 60 + iMinutes;
+  }
+
+  function minutesToHours(iTotalMinutes) {
+    var iHours = Math.floor(iTotalMinutes / 60);
+    var iMinutes = iTotalMinutes % 60;
+    return iHours + "." + (iMinutes < 10 ? "0" + iMinutes : iMinutes);
+  }
+
   return {
     formatDate: function (sIsoDate) {
       if (!sIsoDate) return "";
@@ -53,25 +72,24 @@ sap.ui.define([], function () {
     // hh:mm convention — not a decimal fraction. So "4.80" means 4h + 80m, which
     // carries into 5h 20m, not a literal 4.8 hours. Shared by the Create and Edit
     // entry dialogs so both carry minutes the same way.
-    hoursToMinutes: function (vValue) {
-      if (vValue === undefined || vValue === null || vValue === "") return 0;
-      var aParts = String(vValue).split(".");
-      var iHours = parseInt(aParts[0], 10);
-      var iMinutes = aParts.length > 1 ? parseInt(aParts[1], 10) : 0;
-      if (isNaN(iHours)) iHours = 0;
-      if (isNaN(iMinutes)) iMinutes = 0;
-      return iHours * 60 + iMinutes;
-    },
+    hoursToMinutes: hoursToMinutes,
+    minutesToHours: minutesToHours,
 
-    minutesToHours: function (iTotalMinutes) {
-      var iHours = Math.floor(iTotalMinutes / 60);
-      var iMinutes = iTotalMinutes % 60;
-      return iHours + "." + (iMinutes < 10 ? "0" + iMinutes : iMinutes);
-    },
-
-    // Re-writes a raw "H.MM" input through the carry-over rule (e.g. "4.80" -> "5.20").
+    // Re-writes a raw "H.MM" value through the carry-over rule: "4.80" -> "5.20",
+    // "4.60" -> "5.00". Used on input, and as a display formatter for stored values
+    // that predate normalization or come straight from S4 unnormalized.
     normalizeHours: function (vValue) {
-      return this.minutesToHours(this.hoursToMinutes(vValue));
+      return minutesToHours(hoursToMinutes(vValue));
+    },
+
+    // Sums a list of "H.MM" values and returns the total in the same notation.
+    // Adding them as plain decimals is wrong — 4.60 + 4.30 is 9.30 (9h 30m),
+    // not 8.90 — so the arithmetic has to happen in minutes.
+    sumHours: function (aValues) {
+      var iTotalMinutes = (aValues || []).reduce(function (iSum, vValue) {
+        return iSum + hoursToMinutes(vValue);
+      }, 0);
+      return minutesToHours(iTotalMinutes);
     },
 
     // Given a list of logs (each with a .status code), returns the "overall" status

@@ -204,9 +204,8 @@ sap.ui.define([
       aEntries.forEach(function (e) {
         var sDate = (e.entryDate || "").slice(0, 10);
         if (!mByDate[sDate]) {
-          mByDate[sDate] = { isoDate: sDate, totalHours: 0, logCount: 0, logs: [] };
+          mByDate[sDate] = { isoDate: sDate, logCount: 0, logs: [] };
         }
-        mByDate[sDate].totalHours += parseFloat(e.hours) || 0;
         mByDate[sDate].logCount += 1;
         mByDate[sDate].logs.push(e);
       });
@@ -215,7 +214,8 @@ sap.ui.define([
         var oDay = mByDate[sDate];
         return {
           isoDate: oDay.isoDate,
-          totalHours: oDay.totalHours.toFixed(2),
+          // "H.MM" values must be summed in minutes, not added as decimals.
+          totalHours: formatter.sumHours(oDay.logs.map(function (e) { return e.hours; })),
           logCount: oDay.logCount,
           companyCode: oDay.logs[0] ? oDay.logs[0].companyCode : "",
           status: formatter.overallStatusCode(oDay.logs)

@@ -180,7 +180,7 @@
                             select="onLogRowCheckChange" />
                           <Text id="logWorkCenterCell" text="{objectPage>workCenter}" />
                           <Text id="logCategoryCell" text="{objectPage>category}" />
-                          <Text id="logHoursCell" text="{objectPage>hours}" />
+                          <Text id="logHoursCell" text="{ path: 'objectPage>hours', formatter: '.formatter.normalizeHours' }" />
                           <Text id="logStartTimeCell" text="{ path: 'objectPage>remarks', formatter: '.formatter.parseStartTime' }" />
                           <Text id="logEndTimeCell" text="{ path: 'objectPage>remarks', formatter: '.formatter.parseEndTime' }" />
                           <Text id="logRemarksCell" text="{ path: 'objectPage>remarks', formatter: '.formatter.cleanRemarks' }" class="sapUiSmallMarginBegin" />

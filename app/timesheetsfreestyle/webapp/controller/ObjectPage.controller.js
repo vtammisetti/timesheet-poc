@@ -38,7 +38,8 @@ sap.ui.define([
       });
       var aSortedLogs = this._sortLogsDesc(aLogs).map(this._toSelectableLog);
 
-      var fTotalHours = aLogs.reduce(function (n, e) { return n + (parseFloat(e.hours) || 0); }, 0);
+      // Hours are "H.MM", so they can't be added as decimals — see formatter.sumHours.
+      var sTotalHours = formatter.sumHours(aLogs.map(function (e) { return e.hours; }));
       var sOverallStatus = formatter.overallStatusCode(aLogs);
 
       this.getView().getModel("objectPage").setData({
@@ -47,7 +48,7 @@ sap.ui.define([
         employeeId: oUser.employeeId,
         employeeLabel: oUser.name,
         companyCode: oUser.companyCode,
-        totalHours: fTotalHours.toFixed(2),
+        totalHours: sTotalHours,
         logCount: aLogs.length,
         overallStatusText: aLogs.length ? formatter.formatStatus(sOverallStatus) : "No Status",
         overallStatusState: aLogs.length ? formatter.statusState(sOverallStatus) : "None",
