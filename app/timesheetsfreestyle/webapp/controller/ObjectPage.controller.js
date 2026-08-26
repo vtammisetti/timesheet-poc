@@ -251,8 +251,11 @@ sap.ui.define([
       });
     },
 
-    // Drafts are edited entirely in the local model — no backend call, no busy state.
+    // Drafts are now backend-persisted TimeEntries records — saving an edit is a PATCH,
+    // so it can fail (network, validation, etc.) and that has to reach the user instead
+    // of silently leaving the dialog closed over an unsaved change.
     _saveDraftEdit: function (oDialog, oData) {
+      var that = this;
       var sTimeTag = (oData.startTime && oData.endTime)
         ? "[TSAPP_START:" + oData.startTime + "|TSAPP_END:" + oData.endTime + "] "
         : "";
@@ -264,19 +267,22 @@ sap.ui.define([
         category: oData.category,
         hours: parseFloat(oData.hours).toFixed(2),
         remarks: (sTimeTag + (oData.remarks || "")).trim()
+      }).then(function () {
+        oDialog.close();
+        MessageToast.show("Draft updated");
+        that._refreshTimeEntriesList();
+
+        if (oData.entryDate !== sOriginalDate) {
+          // Moved to a different date — it no longer belongs on this page, so follow
+          // it to where it now lives instead of leaving the user looking at a stale list.
+          that.getOwnerComponent().getRouter().navTo("objectPage", { date: oData.entryDate });
+        } else {
+          that._loadDate(sOriginalDate);
+        }
+      }).catch(function (oError) {
+        MessageBox.error("Failed to save draft: " + oError.message);
+        // Dialog stays open so the user's edits aren't lost and they can retry.
       });
-
-      oDialog.close();
-      MessageToast.show("Draft updated");
-      this._refreshTimeEntriesList();
-
-      if (oData.entryDate !== sOriginalDate) {
-        // Moved to a different date — it no longer belongs on this page, so follow
-        // it to where it now lives instead of leaving the user looking at a stale list.
-        this.getOwnerComponent().getRouter().navTo("objectPage", { date: oData.entryDate });
-      } else {
-        this._loadDate(sOriginalDate);
-      }
     },
 
     onDeleteLogPress: function () {
@@ -299,15 +305,24 @@ sap.ui.define([
       var aDraftLogs = aLogs.filter(function (o) { return o.isDraft; });
       var aRealLogs = aLogs.filter(function (o) { return !o.isDraft; });
 
-      // Drafts are removed from the local store only — nothing to call on the backend.
-      if (aDraftLogs.length) {
-        this.getOwnerComponent().removeDraftEntries(aDraftLogs.map(function (o) { return o.record; }));
-      }
+      // Drafts are now backend-persisted TimeEntries records — each deletion is a real
+      // DELETE that can fail, so the result (which ones actually succeeded) has to be
+      // checked rather than assumed.
+      var pDraftDelete = aDraftLogs.length
+        ? this.getOwnerComponent().removeDraftEntries(aDraftLogs.map(function (o) { return o.record; }))
+        : Promise.resolve({ succeeded: [], failed: [] });
 
       if (!aRealLogs.length) {
-        MessageToast.show(aDraftLogs.length + " draft log(s) deleted");
-        this._loadDate(this._sCurrentIsoDate);
-        this._refreshTimeEntriesList();
+        pDraftDelete.then(function (oResult) {
+          if (oResult.failed.length) {
+            MessageBox.error(oResult.succeeded.length + " draft log(s) deleted, " +
+              oResult.failed.length + " failed to delete. Please try again.");
+          } else {
+            MessageToast.show(oResult.succeeded.length + " draft log(s) deleted");
+          }
+          that._loadDate(that._sCurrentIsoDate);
+          that._refreshTimeEntriesList();
+        });
         return;
       }
 
@@ -326,13 +341,24 @@ sap.ui.define([
         });
       });
 
-      Promise.all(aCalls).then(function (aResults) {
+      // Wait on both the (already-fired) draft deletes and the S4 deletes together so
+      // one combined message reflects what actually happened on each side, rather than
+      // the draft-delete outcome getting lost while this branch was running.
+      Promise.all([pDraftDelete, Promise.all(aCalls)]).then(function (aOutcome) {
+        var oDraftResult = aOutcome[0];
+        var aResults = aOutcome[1];
         var aErrors = aResults.filter(function (s) { return s && s.indexOf("ERROR:") === 0; });
         if (aErrors.length) {
           throw new Error(aErrors.map(function (s) { return s.replace(/^ERROR:\s*/, ""); }).join("; "));
         }
 
-        MessageToast.show(aLogs.length + " log(s) deleted");
+        var iDeleted = oDraftResult.succeeded.length + aRealLogs.length;
+        if (oDraftResult.failed.length) {
+          MessageBox.error(iDeleted + " log(s) deleted, but " + oDraftResult.failed.length +
+            " draft log(s) failed to delete. Please try again.");
+        } else {
+          MessageToast.show(iDeleted + " log(s) deleted");
+        }
         that._removeSharedEntries(aRealLogs);
         that._loadDate(that._sCurrentIsoDate);
         that._refreshTimeEntriesList();
@@ -380,9 +406,13 @@ sap.ui.define([
         var aFailed = aOutcomes.filter(function (o) { return o.result && o.result.indexOf("ERROR:") === 0; });
         var aSucceeded = aOutcomes.filter(function (o) { return aFailed.indexOf(o) === -1; });
 
-        if (aSucceeded.length) {
-          that._promoteDraftsToReal(aSucceeded);
-        }
+        // Promotion now includes an async backend DELETE of the just-submitted drafts,
+        // so the UI refresh has to wait for it to settle. Refreshing first would have
+        // _loadDate re-read the "drafts" model before the removal lands, re-rendering
+        // the submitted entry as a Draft right next to its promoted real row.
+        var pPromoted = aSucceeded.length
+          ? that._promoteDraftsToReal(aSucceeded)
+          : Promise.resolve();
 
         if (aFailed.length) {
           MessageBox.error(aFailed.length + " of " + aDrafts.length + " draft(s) failed to submit: " +
@@ -391,8 +421,10 @@ sap.ui.define([
           MessageToast.show(aSucceeded.length + " draft(s) submitted");
         }
 
-        that._loadDate(that._sCurrentIsoDate);
-        that._refreshTimeEntriesList();
+        return pPromoted.then(function () {
+          that._loadDate(that._sCurrentIsoDate);
+          that._refreshTimeEntriesList();
+        });
       }).catch(function (oError) {
         MessageBox.error("Submit failed: " + oError.message);
         that._loadDate(that._sCurrentIsoDate);
@@ -426,7 +458,30 @@ sap.ui.define([
       });
 
       oSharedModel.setProperty("/entries", aRealEntries);
-      this.getOwnerComponent().removeDraftEntries(aSucceeded.map(function (o) { return o.draft.record; }));
+
+      // Returns a promise so the caller can hold the UI refresh until the drafts are
+      // actually gone — otherwise the submitted entry renders twice, once as its new
+      // real row and once as the not-yet-removed draft.
+      //
+      // The S4 submit already succeeded by this point — a failed local-draft-delete
+      // here is a cleanup problem, not a submit failure, so it must never be presented
+      // to the user as if the submit itself failed (that would be misleading and could
+      // prompt a duplicate resubmit). Log it and move on; the stale draft can be
+      // deleted manually, and _loadDraftsFromBackend will keep showing it until then.
+      // Deliberately never rejects, for the same reason.
+      return this.getOwnerComponent().removeDraftEntries(aSucceeded.map(function (o) { return o.draft.record; }))
+        .then(function (oResult) {
+          if (oResult.failed.length) {
+            // eslint-disable-next-line no-console
+            console.warn(oResult.failed.length + " submitted draft(s) failed to clean up locally " +
+              "after a successful S4 submit — they'll still show as drafts until deleted manually.",
+              oResult.failed);
+          }
+        })
+        .catch(function (oError) {
+          // eslint-disable-next-line no-console
+          console.warn("Draft cleanup after a successful S4 submit failed:", oError);
+        });
     },
 
     _removeSharedEntries: function (aDeletedLogs) {

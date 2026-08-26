@@ -5,8 +5,8 @@ annotate service.TimeEntries with @(
         Data : [
             {
                 $Type : 'UI.DataField',
-                Label : 'employee_ID',
-                Value : employee_ID,
+                Label : 'employeeId',
+                Value : employeeId,
             },
             {
                 $Type : 'UI.DataField',
@@ -46,8 +46,8 @@ annotate service.TimeEntries with @(
     UI.LineItem : [
         {
             $Type : 'UI.DataField',
-            Label : 'employee_ID',
-            Value : employee_ID,
+            Label : 'employeeId',
+            Value : employeeId,
         },
         {
             $Type : 'UI.DataField',
@@ -71,26 +71,4 @@ annotate service.TimeEntries with @(
         },
     ],
 );
-
-annotate service.TimeEntries with {
-    employee @Common.ValueList : {
-        $Type : 'Common.ValueListType',
-        CollectionPath : 'Employees',
-        Parameters : [
-            {
-                $Type : 'Common.ValueListParameterInOut',
-                LocalDataProperty : employee_ID,
-                ValueListProperty : 'ID',
-            },
-            {
-                $Type : 'Common.ValueListParameterDisplayOnly',
-                ValueListProperty : 'name',
-            },
-            {
-                $Type : 'Common.ValueListParameterDisplayOnly',
-                ValueListProperty : 'role',
-            },
-        ],
-    }
-};
 

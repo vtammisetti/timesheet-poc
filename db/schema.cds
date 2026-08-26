@@ -8,10 +8,12 @@ entity Employees {
 
 entity TimeEntries {
   key ID       : UUID;
-  employee     : Association to Employees;
+  employeeId   : String(10);
+  companyCode  : String(10);
   entryDate    : Date;
   workCenter   : String(20);
   category     : String(20);
   hours        : Decimal(5,2);
-  status       : String(10) default 'Draft';
+  remarks      : String(255);
+  status       : String(10) default 'DRAFT';
 }

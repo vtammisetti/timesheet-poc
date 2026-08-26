@@ -678,21 +678,40 @@ onSubmitEntries: function () {
       return;
     }
 
-    // Nothing is sent to S4 here — rows are saved as local Drafts and only reach
-    // the backend when the user submits them from the day's Logs table.
-    aNewDrafts.forEach(function (oDraft) {
-      that.getOwnerComponent().addDraftEntry(oDraft);
+    // Nothing is sent to S4 here — rows are saved as local Drafts (now backend-persisted
+    // TimeEntries records) and only reach S4 when the user submits them from the day's
+    // Logs table. addDraftEntry is a POST now, so a failure here has to be surfaced
+    // instead of silently dropping the row.
+    var aCreatePromises = aNewDrafts.map(function (oDraft) {
+      return that.getOwnerComponent().addDraftEntry(oDraft);
     });
 
-    oDialog.close();
-    MessageToast.show(aNewDrafts.length + " entries saved as Draft — submit them from the day's Logs to send to your timesheet.");
-    that.syncFromSharedEntries();
+    Promise.allSettled(aCreatePromises).then(function (aResults) {
+      var aFailed = aResults.filter(function (o) { return o.status === "rejected"; });
+      var iSucceeded = aResults.length - aFailed.length;
+
+      if (iSucceeded) {
+        oDialog.close();
+        that.syncFromSharedEntries();
+      }
+
+      if (aFailed.length) {
+        MessageBox.error(aFailed.length + " of " + aNewDrafts.length + " entries failed to save as Draft. " +
+          "Please try again.");
+        // eslint-disable-next-line no-console
+        console.error("addDraftEntry failed:", aFailed.map(function (o) { return o.reason; }));
+      }
+      if (iSucceeded) {
+        MessageToast.show(iSucceeded + " entries saved as Draft — submit them from the day's Logs to send to your timesheet.");
+      }
+    });
   });
 },
 
 // Builds a local Draft entry shaped like a real backend entry (same field names as
 // getMyTimeEntries) so it flows through the existing rendering/formatter/sort code
-// unmodified. "record" is a locally-generated id, never an S4 record number.
+// unmodified. No "record" id here anymore — the server assigns the real one on
+// create, and Component#addDraftEntry maps the returned ID back onto "record".
 _buildDraftEntry: function (oDialogData, sIsoDate, oRow) {
   var fHours = parseFloat(oRow.hours);
   return {
@@ -704,7 +723,6 @@ _buildDraftEntry: function (oDialogData, sIsoDate, oRow) {
     category: oRow.category,
     hours: fHours.toFixed(2),
     remarks: oRow.remarks || "",
-    record: "DRAFT-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8),
     isDraft: true
   };
 }

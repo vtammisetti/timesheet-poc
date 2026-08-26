@@ -28,6 +28,12 @@
   ],
   "cds": {
     "requires": {
+      "db": {
+        "kind": "sqlite",
+        "credentials": {
+          "url": "db/timesheet.sqlite"
+        }
+      },
       "API_MANAGE_WORKFORCE_TIMESHEET": {
         "kind": "odata-v2",
         "model": "srv/external/API_MANAGE_WORKFORCE_TIMESHEET",
