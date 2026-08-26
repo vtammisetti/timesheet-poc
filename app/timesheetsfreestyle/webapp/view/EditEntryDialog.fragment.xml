@@ -22,11 +22,17 @@
             <core:Item id="editCategoryTRAV" key="TRAV" text="TRAV - Travel" />
           </Select>
 
+          <Label id="editRemarksLabel" text="Description" />
+          <TextArea id="editRemarksInput" value="{editEntry>/remarks}" rows="3" width="100%" />
+
           <Label id="editHoursLabel" text="Hour(s)" />
           <Input id="editHoursInput" value="{editEntry>/hours}" type="Number" placeholder="0.00" change="onEditHoursChange" />
 
-          <Label id="editRemarksLabel" text="Description" />
-          <TextArea id="editRemarksInput" value="{editEntry>/remarks}" rows="3" width="100%" />
+          <Label id="editStartTimeLabel" text="Start Time" />
+          <TimePicker id="editStartTimeInput" value="{editEntry>/startTime}" valueFormat="hh:mm a" displayFormat="hh:mm a" placeholder="Select start time" />
+
+          <Label id="editEndTimeLabel" text="End Time" />
+          <TimePicker id="editEndTimeInput" value="{editEntry>/endTime}" valueFormat="hh:mm a" displayFormat="hh:mm a" placeholder="Select end time" />
         </f:content>
       </f:SimpleForm>
     </content>

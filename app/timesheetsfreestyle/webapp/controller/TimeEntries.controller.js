@@ -387,7 +387,7 @@ sap.ui.define([
 },
 
 _buildDefaultDayRows: function () {
-  return [{ sNo: 1, category: "TRAI", workCenter: "OD11101901", remarks: "", hours: "" }];
+  return [{ sNo: 1, category: "TRAI", workCenter: "OD11101901", remarks: "", hours: "", startTime: "", endTime: "" }];
 },
 
 _buildDefaultWeekRows: function () {
@@ -556,7 +556,7 @@ onAddDayRow: function () {
   this._pDialog.then(function (oDialog) {
     var oModel = oDialog.getModel("entryDialog");
     var aRows = oModel.getProperty("/dayRows");
-    aRows.push({ sNo: aRows.length + 1, category: "TRAI", workCenter: "OD11101901", remarks: "", hours: "" });
+    aRows.push({ sNo: aRows.length + 1, category: "TRAI", workCenter: "OD11101901", remarks: "", hours: "", startTime: "", endTime: "" });
     oModel.setProperty("/dayRows", aRows);
   });
 },
@@ -724,6 +724,12 @@ onSubmitEntries: function () {
 // unmodified. No "record" id here anymore — the server assigns the real one on
 // create, and Component#addDraftEntry maps the returned ID back onto "record".
 _buildDraftEntry: function (oDialogData, sIsoDate, oRow) {
+  // Same [TSAPP_START:...|TSAPP_END:...] convention the Edit Draft dialog uses
+  // (see ObjectPage.controller.js#_saveDraftEdit) — only tagged when both are set,
+  // so week rows (which have no time-of-day fields) fall through untagged.
+  var sTimeTag = (oRow.startTime && oRow.endTime)
+    ? "[TSAPP_START:" + oRow.startTime + "|TSAPP_END:" + oRow.endTime + "] "
+    : "";
   return {
     employeeId: oDialogData.employeeId,
     companyCode: oDialogData.companyCode,
@@ -732,7 +738,7 @@ _buildDraftEntry: function (oDialogData, sIsoDate, oRow) {
     workCenter: oRow.workCenter,
     category: oRow.category,
     hours: formatter.normalizeHours(oRow.hours),
-    remarks: oRow.remarks || "",
+    remarks: (sTimeTag + (oRow.remarks || "")).trim(),
     isDraft: true
   };
 }
