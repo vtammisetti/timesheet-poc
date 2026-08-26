@@ -45,7 +45,7 @@ async function postToS4(payload) {
 // edit dialog never sends employeeId/companyCode at all, so requiring every field
 // on an update would reject every legitimate draft edit. On a partial write we
 // validate what's actually being written and leave untouched fields alone.
-function validateEntryFields(req, data, bPartial) {
+function validateEntryFields(data, bPartial) {
   const errors = [];
 
   if (!bPartial || data.hours !== undefined) {
@@ -80,9 +80,57 @@ function validateEntryFields(req, data, bPartial) {
     }
   }
 
+  return errors;
+}
+
+function rejectIfInvalid(req, data, bPartial) {
+  const errors = validateEntryFields(data, bPartial);
   if (errors.length > 0) {
     req.error(400, errors.join(' '));
   }
+}
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+// Normalises the date shapes that reach copyWeek: a cds.Date param and a local
+// TimeEntries column are already 'YYYY-MM-DD', while S4's TimeSheetDate arrives from
+// getMyTimeEntries either as an ISO-ish '2026-08-25T00:00:00' string or as OData v2's
+// '/Date(1756080000000)/'. Returns null for anything it can't read as a date.
+function toDateString(vDate) {
+  if (!vDate) return null;
+  if (vDate instanceof Date) return vDate.toISOString().slice(0, 10);
+  const s = String(vDate);
+  const odataMatch = s.match(/^\/Date\((-?\d+)/);
+  if (odataMatch) return new Date(Number(odataMatch[1])).toISOString().slice(0, 10);
+  const sDate = s.slice(0, 10);
+  return DATE_RE.test(sDate) ? sDate : null;
+}
+
+function isValidDateString(sDate) {
+  if (!sDate || !DATE_RE.test(sDate)) return false;
+  const [y, m, d] = sDate.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  return dt.getUTCFullYear() === y && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d;
+}
+
+function toEpochDay(sDate) {
+  const [y, m, d] = sDate.split('-').map(Number);
+  return Date.UTC(y, m - 1, d) / 86400000;
+}
+
+function addDays(sDate, iDays) {
+  const [y, m, d] = sDate.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d + iDays)).toISOString().slice(0, 10);
+}
+
+
+function entryKey(oEntry) {
+  return [
+    oEntry.employeeId,
+    toDateString(oEntry.entryDate),
+    (oEntry.workCenter || '').trim(),
+    (oEntry.category || '').trim()
+  ].join('|');
 }
 
 // LR/162 is S4's rejection for a record that's already Processed (status 60) — those
@@ -108,15 +156,15 @@ module.exports = cds.service.impl(async function () {
   // testS4Connection are deliberately not hooked: they don't write entry fields.
   // Only new/changed data is checked; rows already in db/timesheet.sqlite are untouched.
   this.before(['CREATE', 'UPDATE'], 'TimeEntries', (req) => {
-    validateEntryFields(req, req.data, req.event === 'UPDATE');
+    rejectIfInvalid(req, req.data, req.event === 'UPDATE');
   });
 
   this.before('createTimeEntry', (req) => {
-    validateEntryFields(req, req.data, false);
+    rejectIfInvalid(req, req.data, false);
   });
 
   this.before('updateTimeEntry', (req) => {
-    validateEntryFields(req, req.data, false);
+    rejectIfInvalid(req, req.data, false);
   });
 
 // The S4 connection is used only for the testS4Connection handler; all other handlers use postToS4() directly.
@@ -311,5 +359,130 @@ module.exports = cds.service.impl(async function () {
     req.error(500, `S4 read failed: ${err.message}`);
   }
 });
+
+// copyWeek bulk-copies one week onto another. Both weeks are given explicitly by the
+// caller (no hardcoded "last week"/"this week"), and every copy lands in the local
+// TimeEntries as a fresh DRAFT no matter whether it came from a local draft or from a
+// real S4 record — nothing here is posted to S4. Rows are processed independently, in
+// the spirit of the client's removeDraftEntries/Promise.allSettled pattern: one
+// duplicate or invalid row is skipped with a reason, it never aborts the batch.
+  this.on('copyWeek', async (req) => {
+    const { employeeId, fromWeekStart, toWeekStart } = req.data;
+
+    if (!employeeId || typeof employeeId !== 'string' || !employeeId.trim()) {
+      return req.error(400, 'employeeId is required.');
+    }
+
+    const sFromStart = toDateString(fromWeekStart);
+    const sToStart   = toDateString(toWeekStart);
+
+    if (!isValidDateString(sFromStart)) {
+      return req.error(400, 'fromWeekStart is required and must be a valid date (YYYY-MM-DD).');
+    }
+    if (!isValidDateString(sToStart)) {
+      return req.error(400, 'toWeekStart is required and must be a valid date (YYYY-MM-DD).');
+    }
+
+    const iOffsetDays = toEpochDay(sToStart) - toEpochDay(sFromStart);
+    const sFromEnd = addDays(sFromStart, 6);
+    const sToEnd   = addDays(sToStart, 6);
+
+    const created = [];
+    const skipped = [];
+
+    // --- source: local drafts in the from-week ---
+    const aLocalSource = await SELECT.from('TimeEntries').where({
+      employeeId,
+      entryDate: { between: sFromStart, and: sFromEnd }
+    });
+
+    // --- source: live S4 entries in the same range, read through getMyTimeEntries so
+    // the supersession/tombstone filtering lives in exactly one place ---
+    let aS4Source = [];
+    try {
+      aS4Source = await this.send('getMyTimeEntries', {
+        employeeId,
+        fromDate: sFromStart,
+        toDate: sFromEnd
+      }) || [];
+    } catch (err) {
+      skipped.push({
+        entryDate: null,
+        workCenter: null,
+        category: null,
+        reason: `S4 source entries could not be read, only local drafts were copied: ${err.message}`
+      });
+    }
+
+    const aSource = [...aLocalSource, ...aS4Source];
+
+    // --- existing target-week entries, for the duplicate check ---
+    const aTargetExisting = await SELECT.from('TimeEntries').where({
+      employeeId,
+      entryDate: { between: sToStart, and: sToEnd }
+    });
+   
+    const oExistingKeys = new Set(aTargetExisting.map(entryKey));
+
+    for (const oSource of aSource) {
+      const sSourceDate = toDateString(oSource.entryDate);
+      if (!sSourceDate) {
+        skipped.push({
+          entryDate: null,
+          workCenter: oSource.workCenter,
+          category: oSource.category,
+          reason: 'Source entry has no readable entry date.'
+        });
+        continue;
+      }
+
+      const oNew = {
+        ID:          cds.utils.uuid(),
+        employeeId:  oSource.employeeId,
+        companyCode: oSource.companyCode,
+        entryDate:   addDays(sSourceDate, iOffsetDays),
+        workCenter:  oSource.workCenter,
+        category:    oSource.category,
+        hours:       oSource.hours !== undefined && oSource.hours !== null ? Number(oSource.hours) : oSource.hours,
+        remarks:     oSource.remarks,
+        status:      'DRAFT'   // always a draft, whatever the source's own status was
+      };
+
+      if (oExistingKeys.has(entryKey(oNew))) {
+        skipped.push({
+          entryDate:  oNew.entryDate,
+          workCenter: oNew.workCenter,
+          category:   oNew.category,
+          reason:     'Duplicate entry already exists for this date/work center/category.'
+        });
+        continue;
+      }
+
+      const aErrors = validateEntryFields(oNew, false);
+      if (aErrors.length > 0) {
+        skipped.push({
+          entryDate:  oNew.entryDate,
+          workCenter: oNew.workCenter,
+          category:   oNew.category,
+          reason:     aErrors.join(' ')
+        });
+        continue;
+      }
+
+      try {
+        await INSERT.into('TimeEntries').entries(oNew);
+        created.push(oNew);
+      } catch (err) {
+        skipped.push({
+          entryDate:  oNew.entryDate,
+          workCenter: oNew.workCenter,
+          category:   oNew.category,
+          reason:     `Could not be created: ${err.message}`
+        });
+      }
+    }
+
+    return { created, skipped };
+  });
 
 });

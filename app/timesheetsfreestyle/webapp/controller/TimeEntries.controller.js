@@ -765,6 +765,157 @@ _buildDraftEntry: function (oDialogData, sIsoDate, oRow) {
     remarks: (sTimeTag + (oRow.remarks || "")).trim(),
     isDraft: true
   };
-}
+},
+
+    // --- Copy Week -------------------------------------------------------------
+    // Bulk-copies one week's entries (local drafts AND real S4 entries, merged
+    // server-side) into another week as new local Drafts, via the unbound copyWeek
+    // action. Nothing reaches S4 here — the copies are drafts like any other and are
+    // submitted later from the day's Logs.
+
+    onCopyWeekPress: function () {
+      var oView = this.getView();
+
+      if (!this._pCopyWeekDialog) {
+        this._pCopyWeekDialog = Fragment.load({
+          id: oView.getId(),
+          name: "timesheetsfreestyle.view.CopyWeekDialog",
+          controller: this
+        }).then(function (oDialog) {
+          oView.addDependent(oDialog);
+          return oDialog;
+        });
+      }
+
+      this._pCopyWeekDialog.then(function (oDialog) {
+        var oThisWeek = this._getWeekStart(new Date());
+        var oLastWeek = new Date(oThisWeek);
+        oLastWeek.setDate(oLastWeek.getDate() - 7);
+
+        oDialog.setModel(new JSONModel({
+          sourceDate: oLastWeek,
+          targetDate: oThisWeek,
+          sourceRangeLabel: "",
+          targetRangeLabel: ""
+        }), "copyWeekDialog");
+
+        this._refreshCopyWeekLabels(oDialog);
+        oDialog.setBusy(false);
+        oDialog.open();
+      }.bind(this));
+    },
+
+    onCopyWeekDateChange: function (oEvent) {
+      if (!oEvent.getParameter("valid")) {
+        return;
+      }
+      this._pCopyWeekDialog.then(function (oDialog) {
+        this._refreshCopyWeekLabels(oDialog);
+      }.bind(this));
+    },
+
+    _refreshCopyWeekLabels: function (oDialog) {
+      var oModel = oDialog.getModel("copyWeekDialog");
+      var oSource = oModel.getProperty("/sourceDate");
+      var oTarget = oModel.getProperty("/targetDate");
+
+      oModel.setProperty("/sourceRangeLabel",
+        oSource ? "Copies from " + this._formatWeekRangeLabel(this._getWeekStart(oSource)) : "");
+      oModel.setProperty("/targetRangeLabel",
+        oTarget ? "Copies into " + this._formatWeekRangeLabel(this._getWeekStart(oTarget)) : "");
+    },
+
+    _formatWeekRangeLabel: function (oWeekStart) {
+      var oWeekEnd = new Date(oWeekStart);
+      oWeekEnd.setDate(oWeekEnd.getDate() + 6);
+      return oWeekStart.toLocaleDateString("en-GB", { day: "2-digit", month: "short" }) + " - " +
+        oWeekEnd.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+    },
+
+    onCancelCopyWeekDialog: function () {
+      this._pCopyWeekDialog.then(function (oDialog) { oDialog.close(); });
+    },
+
+    onConfirmCopyWeek: function () {
+      var that = this;
+
+      this._pCopyWeekDialog.then(function (oDialog) {
+        var oModel = oDialog.getModel("copyWeekDialog");
+        var oSource = oModel.getProperty("/sourceDate");
+        var oTarget = oModel.getProperty("/targetDate");
+
+        if (!oSource || !oTarget) {
+          MessageToast.show("Pick both a source week and a target week.", { duration: 6000 });
+          return;
+        }
+
+        var oWeekStart = that._getWeekStart(oSource);
+        var oTargetWeekStart = that._getWeekStart(oTarget);
+        var sFromWeekStart = that._formatForBackendDate(oWeekStart);
+        var sToWeekStart = that._formatForBackendDate(oTargetWeekStart);
+        var oUser = that.getOwnerComponent().getCurrentUser();
+
+        // Reads both the local drafts and live S4 data server-side, so this is not
+        // instant — block the dialog rather than leaving Copy looking unresponsive.
+        oDialog.setBusy(true);
+
+        var oActionBinding = that.getOwnerComponent().getModel().bindContext("/copyWeek(...)");
+        oActionBinding.setParameter("employeeId", oUser.employeeId);
+        oActionBinding.setParameter("fromWeekStart", sFromWeekStart);
+        oActionBinding.setParameter("toWeekStart", sToWeekStart);
+
+        oActionBinding.execute().then(function () {
+          var oResult = oActionBinding.getBoundContext().getObject() || {};
+          oDialog.setBusy(false);
+          oDialog.close();
+
+          that._showCopyWeekResult(oResult, oWeekStart, oTargetWeekStart);
+
+          // The copies are new backend rows the "drafts" model knows nothing about
+          // yet, so re-read it before rebuilding the list from the shared models.
+          return that.getOwnerComponent()._loadDraftsFromBackend().then(function () {
+            that.syncFromSharedEntries();
+          });
+        }).catch(function (oError) {
+          oDialog.setBusy(false);
+          MessageToast.show("Copy week failed: " +
+            that.getOwnerComponent().extractODataErrorMessage(oError), { duration: 6000 });
+        });
+      });
+    },
+
+    _showCopyWeekResult: function (oResult, oSourceWeekStart, oTargetWeekStart) {
+      var oView = this.getView();
+      var aCreated = oResult.created || [];
+      var aSkipped = oResult.skipped || [];
+
+      if (!this._pCopyWeekResultDialog) {
+        this._pCopyWeekResultDialog = Fragment.load({
+          id: oView.getId(),
+          name: "timesheetsfreestyle.view.CopyWeekResultDialog",
+          controller: this
+        }).then(function (oDialog) {
+          oView.addDependent(oDialog);
+          return oDialog;
+        });
+      }
+
+      this._pCopyWeekResultDialog.then(function (oDialog) {
+        oDialog.setModel(new JSONModel({
+          summary: aCreated.length + " entries created, " + aSkipped.length + " skipped",
+          summaryState: aCreated.length === 0 ? "Warning" : (aSkipped.length ? "Information" : "Success"),
+          rangeLabel: this._formatWeekRangeLabel(oSourceWeekStart) + "  \u2192  " +
+            this._formatWeekRangeLabel(oTargetWeekStart),
+          created: aCreated,
+          skipped: aSkipped,
+          hasSkipped: aSkipped.length > 0
+        }), "copyWeekResult");
+        oDialog.open();
+      }.bind(this));
+    },
+
+    onCloseCopyWeekResult: function () {
+      this._pCopyWeekResultDialog.then(function (oDialog) { oDialog.close(); });
+    }
   });
 });

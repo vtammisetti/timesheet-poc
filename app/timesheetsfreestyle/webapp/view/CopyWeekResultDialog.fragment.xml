@@ -1,0 +1,56 @@
+<core:FragmentDefinition
+  xmlns="sap.m"
+  xmlns:core="sap.ui.core">
+  <Dialog
+    id="copyWeekResultDialog"
+    title="Copy Week Results"
+    contentWidth="44rem"
+    horizontalScrolling="false">
+    <content>
+      <VBox id="copyWeekResultVBox" class="sapUiSmallMargin">
+
+        <ObjectStatus
+          id="copyWeekSummaryStatus"
+          text="{copyWeekResult>/summary}"
+          state="{copyWeekResult>/summaryState}"
+          class="sapUiSmallMarginBottom" />
+
+        <Text id="copyWeekResultRangeText" text="{copyWeekResult>/rangeLabel}" />
+
+        <Table
+          id="copyWeekSkippedTable"
+          items="{copyWeekResult>/skipped}"
+          visible="{copyWeekResult>/hasSkipped}"
+          class="sapUiSmallMarginTop"
+          fixedLayout="false">
+          <headerToolbar>
+            <Toolbar id="copyWeekSkippedToolbar">
+              <Title id="copyWeekSkippedTitle" text="Skipped ({copyWeekResult>/skipped/length})" />
+              <ToolbarSpacer id="copyWeekSkippedSpacer" />
+            </Toolbar>
+          </headerToolbar>
+          <columns>
+            <Column id="copyWeekSkippedDateColumn"><Text id="copyWeekSkippedDateTitle" text="Date" /></Column>
+            <Column id="copyWeekSkippedWorkCenterColumn"><Text id="copyWeekSkippedWorkCenterTitle" text="Work Center" /></Column>
+            <Column id="copyWeekSkippedCategoryColumn"><Text id="copyWeekSkippedCategoryTitle" text="Task Type" /></Column>
+            <Column id="copyWeekSkippedReasonColumn"><Text id="copyWeekSkippedReasonTitle" text="Reason" /></Column>
+          </columns>
+          <items>
+            <ColumnListItem id="copyWeekSkippedItem">
+              <cells>
+                <Text id="copyWeekSkippedDateCell" text="{ path: 'copyWeekResult>entryDate', formatter: '.formatter.formatDate' }" />
+                <Text id="copyWeekSkippedWorkCenterCell" text="{copyWeekResult>workCenter}" />
+                <Text id="copyWeekSkippedCategoryCell" text="{copyWeekResult>category}" />
+                <Text id="copyWeekSkippedReasonCell" text="{copyWeekResult>reason}" wrapping="true" />
+              </cells>
+            </ColumnListItem>
+          </items>
+        </Table>
+
+      </VBox>
+    </content>
+    <endButton>
+      <Button id="closeCopyWeekResultButton" text="Close" type="Emphasized" press="onCloseCopyWeekResult" />
+    </endButton>
+  </Dialog>
+</core:FragmentDefinition>

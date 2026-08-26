@@ -75,4 +75,40 @@ function getMyTimeEntries(
   record      : String;
 };
 
+//This CDS version accepts an entity as a whole return type but not as the type of a
+//nested element, so the created rows travel as a named structured type. Its elements
+//are declared as references into db.TimeEntries rather than retyped by hand, so the
+//shape follows the schema if a column there ever changes.
+type CopiedTimeEntry {
+  ID          : db.TimeEntries:ID;
+  employeeId  : db.TimeEntries:employeeId;
+  companyCode : db.TimeEntries:companyCode;
+  entryDate   : db.TimeEntries:entryDate;
+  workCenter  : db.TimeEntries:workCenter;
+  category    : db.TimeEntries:category;
+  hours       : db.TimeEntries:hours;
+  remarks     : db.TimeEntries:remarks;
+  status      : db.TimeEntries:status;
+}
+
+//copyWeek action bulk-copies one week's entries onto another week. Source is both the
+//local TimeEntries drafts and the live S4 entries (via the same supersession-filtered
+//read getMyTimeEntries uses) for fromWeekStart..fromWeekStart+6. Every copy is created
+//as a NEW LOCAL DRAFT — this action never posts anything to S4; the user reviews and
+//submits the copies later like any other draft. Rows that fail validation or would
+//duplicate an existing entry are skipped individually and reported, not failed as a batch.
+action copyWeek(
+  employeeId    : String,
+  fromWeekStart : Date,
+  toWeekStart   : Date
+) returns {
+  created : array of CopiedTimeEntry;
+  skipped : array of {
+    entryDate  : Date;
+    workCenter : String;
+    category   : String;
+    reason     : String;
+  };
+};
+
 }

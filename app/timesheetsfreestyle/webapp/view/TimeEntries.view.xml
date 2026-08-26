@@ -139,6 +139,13 @@
             <Toolbar id="entriesTableToolbar">
               <Title id="tableHeader" text="Days ({myModel>/dailySummaries/length})" />
               <ToolbarSpacer id="toolbarSpacer1" />
+              <Button
+                id="copyWeekButton"
+                text="Copy Week"
+                icon="sap-icon://copy"
+                type="Transparent"
+                tooltip="Copy a week's entries into another week as Drafts"
+                press="onCopyWeekPress" />
                <Button id="sortButton" icon="sap-icon://sort" type="Transparent" tooltip="Sort" press="onSortPress" />
               <Button id="settingsButton" icon="sap-icon://action-settings" type="Transparent" tooltip="Settings" />
               <SearchField

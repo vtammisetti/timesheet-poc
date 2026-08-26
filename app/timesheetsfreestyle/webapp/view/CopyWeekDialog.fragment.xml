@@ -1,0 +1,56 @@
+<core:FragmentDefinition
+  xmlns="sap.m"
+  xmlns:core="sap.ui.core"
+  xmlns:f="sap.ui.layout.form">
+  <Dialog
+    id="copyWeekDialog"
+    title="Copy Week"
+    contentWidth="34rem"
+    horizontalScrolling="false"
+    busyIndicatorDelay="0">
+    <content>
+      <f:SimpleForm
+        id="copyWeekForm"
+        editable="true"
+        layout="ResponsiveGridLayout"
+        columnsXL="1" columnsL="1" columnsM="1"
+        labelSpanXL="12" labelSpanL="12" labelSpanM="12" labelSpanS="12"
+        adjustLabelSpan="false">
+        <f:content>
+          <Label id="copyWeekSourceLabel" text="Source week (any date in that week)" />
+          <DatePicker
+            id="copyWeekSourceInput"
+            dateValue="{copyWeekDialog>/sourceDate}"
+            change="onCopyWeekDateChange"
+            valueFormat="yyyy-MM-dd"
+            displayFormat="medium"
+            width="100%" />
+          <Text id="copyWeekSourceRangeText" text="{copyWeekDialog>/sourceRangeLabel}" />
+
+          <Label id="copyWeekTargetLabel" text="Target week (any date in that week)" />
+          <DatePicker
+            id="copyWeekTargetInput"
+            dateValue="{copyWeekDialog>/targetDate}"
+            change="onCopyWeekDateChange"
+            valueFormat="yyyy-MM-dd"
+            displayFormat="medium"
+            width="100%" />
+          <Text id="copyWeekTargetRangeText" text="{copyWeekDialog>/targetRangeLabel}" />
+        </f:content>
+      </f:SimpleForm>
+
+      <MessageStrip
+        id="copyWeekInfoStrip"
+        text="Every copied entry is saved as a new Draft. Nothing is sent to your timesheet until you submit it from the day's Logs."
+        type="Information"
+        showIcon="true"
+        class="sapUiSmallMarginBeginEnd sapUiSmallMarginBottom" />
+    </content>
+    <beginButton>
+      <Button id="confirmCopyWeekButton" text="Copy" type="Emphasized" press="onConfirmCopyWeek" />
+    </beginButton>
+    <endButton>
+      <Button id="cancelCopyWeekButton" text="Cancel" press="onCancelCopyWeekDialog" />
+    </endButton>
+  </Dialog>
+</core:FragmentDefinition>
