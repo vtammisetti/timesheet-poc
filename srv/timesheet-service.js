@@ -35,6 +35,56 @@ async function postToS4(payload) {
   return postResp.data;
 }
 
+// Business-rule validation shared by the local TimeEntries draft writes and the
+// S4-bound createTimeEntry/updateTimeEntry actions, so a rule can't drift between
+// the two paths. Field names match db/schema.cds TimeEntries and the action
+// parameters in timesheet-service.cds (they're already aligned).
+//
+// bPartial is set for PATCH/UPDATE, where req.data carries ONLY the changed fields:
+// the drafts client PATCHes field-by-field (Component#updateDraftEntry) and the
+// edit dialog never sends employeeId/companyCode at all, so requiring every field
+// on an update would reject every legitimate draft edit. On a partial write we
+// validate what's actually being written and leave untouched fields alone.
+function validateEntryFields(req, data, bPartial) {
+  const errors = [];
+
+  if (!bPartial || data.hours !== undefined) {
+    const hours = Number(data.hours);
+    if (isNaN(hours) || hours <= 0 || hours > 24) {
+      errors.push('Hours must be greater than 0 and no more than 24.');
+    }
+  }
+
+  // entryDate arrives as a 'YYYY-MM-DD' string for both cds.Date columns and Date
+  // action params (the handlers below already .split('-') it). Comparing the date
+  // strings directly keeps this exact regardless of server timezone — building
+  // Date objects here would let a UTC-behind server accept tomorrow's date.
+  if (data.entryDate) {
+    const sEntryDate = String(data.entryDate).slice(0, 10);
+    const sToday = new Date().toISOString().slice(0, 10);
+    if (sEntryDate > sToday) {
+      errors.push('Entry date cannot be in the future.');
+    }
+  }
+
+  const requiredStringFields = {
+    employeeId: 'Employee ID',
+    companyCode: 'Company code',
+    workCenter: 'Work center',
+    category: 'Category'
+  };
+  for (const [field, label] of Object.entries(requiredStringFields)) {
+    if (bPartial && data[field] === undefined) continue; // not being changed
+    if (!data[field] || typeof data[field] !== 'string' || !data[field].trim()) {
+      errors.push(`${label} is required.`);
+    }
+  }
+
+  if (errors.length > 0) {
+    req.error(400, errors.join(' '));
+  }
+}
+
 // LR/162 is S4's rejection for a record that's already Processed (status 60) — those
 // are locked from further change via this API, which is expected, not a bug. Surface
 // that as a plain-English message instead of the raw nested SAP error payload.
@@ -52,6 +102,23 @@ function s4ErrorMessage(err) {
 module.exports = cds.service.impl(async function () {
 
   const S4 = await cds.connect.to('API_MANAGE_WORKFORCE_TIMESHEET');
+
+  // Validation runs before the write handlers on every path that creates or changes
+  // an entry — local drafts and both S4-bound actions. Deletes, getMyTimeEntries and
+  // testS4Connection are deliberately not hooked: they don't write entry fields.
+  // Only new/changed data is checked; rows already in db/timesheet.sqlite are untouched.
+  this.before(['CREATE', 'UPDATE'], 'TimeEntries', (req) => {
+    validateEntryFields(req, req.data, req.event === 'UPDATE');
+  });
+
+  this.before('createTimeEntry', (req) => {
+    validateEntryFields(req, req.data, false);
+  });
+
+  this.before('updateTimeEntry', (req) => {
+    validateEntryFields(req, req.data, false);
+  });
+
 // The S4 connection is used only for the testS4Connection handler; all other handlers use postToS4() directly.
   this.on('testS4Connection', async () => {
   try {

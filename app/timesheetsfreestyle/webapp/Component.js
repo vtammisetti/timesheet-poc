@@ -3,8 +3,9 @@ sap.ui.define([
     "sap/ui/model/json/JSONModel",
     "sap/ui/model/Filter",
     "sap/ui/model/FilterOperator",
+    "sap/ui/core/Messaging",
     "timesheetsfreestyle/model/models"
-], (UIComponent, JSONModel, Filter, FilterOperator, models) => {
+], (UIComponent, JSONModel, Filter, FilterOperator, Messaging, models) => {
     "use strict";
 
     // All fields on the backend TimeEntries entity (db/schema.cds) — selected explicitly
@@ -118,6 +119,23 @@ sap.ui.define([
             return this.getModel("drafts").getProperty("/entries") || [];
         },
 
+        // Server-side validation (srv/timesheet-service.js#validateEntryFields) rejects
+        // with a 400 whose OData body carries the real, user-facing reason. UI5 surfaces
+        // that on the rejected Error, but where it lands varies: an OData error body is
+        // parsed onto .error/.message, while a plain transport failure only has .message.
+        // Callers show whatever this returns directly, so dig out the specific text
+        // rather than letting a generic "request failed" reach the user.
+        extractODataErrorMessage(oError) {
+            if (!oError) return "Unknown error";
+            var oBody = oError.error || oError;
+            if (oBody.details && oBody.details.length) {
+                // Multiple field errors come back as details[]; join them all so the
+                // user sees every problem at once, not just the first.
+                return oBody.details.map(function (o) { return o.message; }).join(" ");
+            }
+            return oBody.message || oError.message || "Unknown error";
+        },
+
         // Returns a Promise. Resolves with the server-confirmed draft (real "record" id
         // included) once the POST succeeds; rejects if it fails — callers must handle
         // both, this no longer fails silently.
@@ -131,15 +149,66 @@ sap.ui.define([
             var oListBinding = this.getModel().bindList("/TimeEntries", undefined, undefined, undefined, {
                 $select: DRAFT_SELECT
             });
+            // Snapshot the message list so a failure below can identify which messages
+            // this particular POST produced (see _takeCreateErrorMessage).
+            var aMessagesBefore = Messaging.getMessageModel().getData().slice();
             var oContext = oListBinding.create(oPayload);
 
-            return oContext.created().then(function () {
-                var oCreated = this._toDraftModelEntry(oContext.getObject());
-                var aDrafts = this.getDraftEntries();
-                aDrafts.push(oCreated);
-                this.getModel("drafts").setProperty("/entries", aDrafts);
-                return oCreated;
+            // A failed POST does NOT reject created() — UI5 keeps the transient context
+            // and re-sends it with the next request ("POST on 'TimeEntries' failed; will
+            // be repeated automatically" in the console). So created() just stays pending
+            // forever on a validation rejection and the caller never learns the row was
+            // refused. createCompleted is the only reliable signal for both outcomes.
+            // created() is still attached, but only to swallow the cancellation rejection
+            // that resetChanges() below triggers.
+            oContext.created().catch(function () { /* handled via createCompleted */ });
+
+            return new Promise(function (resolve, reject) {
+                oListBinding.attachCreateCompleted(function (oEvent) {
+                    if (oEvent.getParameter("context") !== oContext) return;
+
+                    if (oEvent.getParameter("success")) {
+                        var oCreated = this._toDraftModelEntry(oContext.getObject());
+                        var aDrafts = this.getDraftEntries();
+                        aDrafts.push(oCreated);
+                        this.getModel("drafts").setProperty("/entries", aDrafts);
+                        resolve(oCreated);
+                        return;
+                    }
+
+                    var sMessage = this._takeCreateErrorMessage(oContext, aMessagesBefore);
+                    // Cancel the queued auto-retry, or the row the server just refused
+                    // gets re-POSTed with the user's next save.
+                    oListBinding.resetChanges().catch(function () { /* nothing pending */ });
+                    reject(new Error(sMessage));
+                }.bind(this));
             }.bind(this));
+        },
+
+        // Pulls the server's reason for a failed create out of the message model — UI5
+        // routes it there (ODataModel#reportError) instead of onto a rejected promise,
+        // so it has to be read back out.
+        //
+        // Matching is by "what appeared during this POST", not by target: CAP's 400 body
+        // carries no OData "target", so the message ends up anchored to the resource path
+        // (/TimeEntries) rather than this context's transient path — a target match would
+        // simply never hit. Messages are deliberately NOT removed here: when several rows
+        // are saved at once their handlers all read the same window, and consuming them
+        // would leave the later rows with no reason to report. Reading only what is new
+        // since this call's snapshot keeps that safe, and makes stale leftovers harmless.
+        _takeCreateErrorMessage(oContext, aMessagesBefore) {
+            var aAll = Messaging.getMessageModel().getData() || [];
+            var aNew = aAll.filter(function (oMessage) {
+                return aMessagesBefore.indexOf(oMessage) === -1;
+            });
+
+            var sText = aNew.map(function (oMessage) {
+                return oMessage.getMessage();
+            }).filter(function (s, i, a) {
+                return s && a.indexOf(s) === i;
+            }).join(" ");
+
+            return sText || "Could not save the entry.";
         },
 
         // Returns a Promise. sRecord is the real server-assigned id (see
@@ -158,6 +227,12 @@ sap.ui.define([
                     return o.record === sRecord ? Object.assign({}, o, oPatch) : o;
                 });
                 this.getModel("drafts").setProperty("/entries", aDrafts);
+            }.bind(this)).catch(function (oError) {
+                // Same as addDraftEntry: a rejected PATCH leaves the failed value pending
+                // on the context, so clear it (the local drafts model was never updated —
+                // this is a no-optimistic-update path) and surface the server's reason.
+                oContext.getBinding().resetChanges();
+                throw new Error(this.extractODataErrorMessage(oError));
             }.bind(this));
         },
 

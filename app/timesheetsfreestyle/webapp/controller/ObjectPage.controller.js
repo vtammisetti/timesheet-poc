@@ -252,7 +252,7 @@ sap.ui.define([
         var oData = oModel.getData();
 
         if (!oData.entryDate || !oData.workCenter || !oData.category || !oData.hours) {
-          MessageBox.error("Date, Work Center, Task Type, and Hours are required.");
+          MessageToast.show("Date, Work Center, Task Type, and Hours are required.", { duration: 6000 });
           return;
         }
 
@@ -294,7 +294,9 @@ sap.ui.define([
           that._loadDate(sOriginalDate);
         }
       }).catch(function (oError) {
-        MessageBox.error("Failed to save draft: " + oError.message);
+        // updateDraftEntry already unwraps the server's validation message, so
+        // oError.message is the specific reason, not a generic failure.
+        MessageToast.show("Failed to save draft: " + oError.message, { duration: 6000 });
         // Dialog stays open so the user's edits aren't lost and they can retry.
       });
     },
@@ -329,8 +331,8 @@ sap.ui.define([
       if (!aRealLogs.length) {
         pDraftDelete.then(function (oResult) {
           if (oResult.failed.length) {
-            MessageBox.error(oResult.succeeded.length + " draft log(s) deleted, " +
-              oResult.failed.length + " failed to delete. Please try again.");
+            MessageToast.show(oResult.succeeded.length + " draft log(s) deleted, " +
+              oResult.failed.length + " failed to delete. Please try again.", { duration: 6000 });
           } else {
             MessageToast.show(oResult.succeeded.length + " draft log(s) deleted");
           }
@@ -368,8 +370,8 @@ sap.ui.define([
 
         var iDeleted = oDraftResult.succeeded.length + aRealLogs.length;
         if (oDraftResult.failed.length) {
-          MessageBox.error(iDeleted + " log(s) deleted, but " + oDraftResult.failed.length +
-            " draft log(s) failed to delete. Please try again.");
+          MessageToast.show(iDeleted + " log(s) deleted, but " + oDraftResult.failed.length +
+            " draft log(s) failed to delete. Please try again.", { duration: 6000 });
         } else {
           MessageToast.show(iDeleted + " log(s) deleted");
         }
@@ -377,7 +379,7 @@ sap.ui.define([
         that._loadDate(that._sCurrentIsoDate);
         that._refreshTimeEntriesList();
       }).catch(function (oError) {
-        MessageBox.error("Delete failed: " + oError.message);
+        MessageToast.show("Delete failed: " + oError.message, { duration: 6000 });
         // Some of the deletes may have gone through even though others failed —
         // reload so the table reflects whatever actually happened on the backend.
         that._loadDate(that._sCurrentIsoDate);
@@ -429,8 +431,8 @@ sap.ui.define([
           : Promise.resolve();
 
         if (aFailed.length) {
-          MessageBox.error(aFailed.length + " of " + aDrafts.length + " draft(s) failed to submit: " +
-            aFailed.map(function (o) { return o.result.replace(/^ERROR:\s*/, ""); }).join("; "));
+          MessageToast.show(aFailed.length + " of " + aDrafts.length + " draft(s) failed to submit: " +
+            aFailed.map(function (o) { return o.result.replace(/^ERROR:\s*/, ""); }).join("; "), { duration: 6000 });
         } else {
           MessageToast.show(aSucceeded.length + " draft(s) submitted");
         }
@@ -440,7 +442,7 @@ sap.ui.define([
           that._refreshTimeEntriesList();
         });
       }).catch(function (oError) {
-        MessageBox.error("Submit failed: " + oError.message);
+        MessageToast.show("Submit failed: " + oError.message, { duration: 6000 });
         that._loadDate(that._sCurrentIsoDate);
         that._refreshTimeEntriesList();
       });

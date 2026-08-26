@@ -2,11 +2,10 @@ sap.ui.define([
   "sap/ui/core/mvc/Controller",
   "sap/ui/core/Fragment",
   "sap/ui/model/json/JSONModel",
-  "sap/m/MessageBox",
   "sap/m/MessageToast",
   "sap/ui/unified/DateRange",
   "timesheetsfreestyle/model/formatter"
-], function (Controller, Fragment, JSONModel, MessageBox, MessageToast, DateRange, formatter) {
+], function (Controller, Fragment, JSONModel, MessageToast, DateRange, formatter) {
   "use strict";
 
   return Controller.extend("timesheetsfreestyle.controller.TimeEntries", {
@@ -665,27 +664,31 @@ onSubmitEntries: function () {
     var oData = oDialog.getModel("entryDialog").getData();
     var aNewDrafts = [];
 
+    // Only genuinely untouched rows are skipped here. Anything the user actually
+    // filled in goes to the server even if it looks wrong (0 hours, blank work
+    // center, future date) — the server owns the business rules, and dropping a
+    // bad row on the client instead would replace its specific message with a
+    // vague "enter a valid row" and make validation look broken on create.
     if (oData.viewMode === "day") {
       var sDate = that._formatForBackendDate(that._selectedDate);
       oData.dayRows.forEach(function (oRow) {
-        if (oRow.workCenter && oRow.category && oRow.hours) {
-          aNewDrafts.push(that._buildDraftEntry(oData, sDate, oRow));
-        }
+        if (that._isBlankDayRow(oRow)) return;
+        aNewDrafts.push(that._buildDraftEntry(oData, sDate, oRow));
       });
     } else {
       oData.weekRows.forEach(function (oRow) {
         oData.weekDates.forEach(function (oDay, i) {
-          var sKey = "day" + i;
-          var sHours = oRow.hoursByDay[sKey];
-          if (sHours && parseFloat(sHours) > 0 && oRow.workCenter && oRow.category) {
-            aNewDrafts.push(that._buildDraftEntry(oData, oDay.isoDate, Object.assign({}, oRow, { hours: sHours })));
-          }
+          // An empty day cell means "nothing worked that day", so it stays skipped;
+          // a filled-in one is submitted as-is and validated server-side.
+          var sHours = oRow.hoursByDay["day" + i];
+          if (!sHours || !String(sHours).trim()) return;
+          aNewDrafts.push(that._buildDraftEntry(oData, oDay.isoDate, Object.assign({}, oRow, { hours: sHours })));
         });
       });
     }
 
     if (!aNewDrafts.length) {
-      MessageBox.error("Enter at least one valid row with Work Center, Task Type, and Hours.");
+      MessageToast.show("Enter at least one row with hours before saving.");
       return;
     }
 
@@ -707,15 +710,31 @@ onSubmitEntries: function () {
       }
 
       if (aFailed.length) {
-        MessageBox.error(aFailed.length + " of " + aNewDrafts.length + " entries failed to save as Draft. " +
-          "Please try again.");
-        // eslint-disable-next-line no-console
-        console.error("addDraftEntry failed:", aFailed.map(function (o) { return o.reason; }));
+        // Server-side validation rejects with the specific business reason (hours
+        // range, future date, missing field) — show that, not just "failed", or the
+        // user has no idea what to correct. Duplicates are collapsed so a batch of
+        // rows failing the same rule reads as one message.
+        var aReasons = aFailed.map(function (o) {
+          return (o.reason && o.reason.message) || "Unknown error";
+        }).filter(function (s, i, a) { return a.indexOf(s) === i; });
+
+        MessageToast.show(aFailed.length + " of " + aNewDrafts.length + " entries failed to save as Draft: " +
+          aReasons.join(" "), { duration: 6000 });
       }
       if (iSucceeded) {
         MessageToast.show(iSucceeded + " entries saved as Draft — submit them from the day's Logs to send to your timesheet.");
       }
     });
+  });
+},
+
+// A day row the user never touched. Task Type and Work Center are pre-filled with
+// defaults on every new row, so they can't tell an untouched row from a real one —
+// only the fields that start empty can. Anything else (including a row whose
+// defaults were cleared) counts as intentional input and is sent for validation.
+_isBlankDayRow: function (oRow) {
+  return !["hours", "remarks", "startTime", "endTime"].some(function (sKey) {
+    return oRow[sKey] && String(oRow[sKey]).trim();
   });
 },
 
