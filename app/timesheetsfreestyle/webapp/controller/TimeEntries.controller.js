@@ -492,7 +492,12 @@ onDatePickerChange: function (oEvent) {
   if (!oEvent.getParameter("valid")) {
     return;
   }
-  var oDate = oEvent.getParameter("date");
+  // sap.m.DatePicker's change event carries only { value, valid } — there is no
+  // "date" parameter. Reading one always came back undefined, so this handler
+  // returned early every time and _selectedDate kept whatever the arrows last set
+  // (usually today), while the picker showed the date the user actually chose.
+  // Rows were then saved against the stale date. Take it off the control instead.
+  var oDate = oEvent.getSource().getDateValue();
   if (!oDate) {
     return;
   }
