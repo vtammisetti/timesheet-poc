@@ -7,6 +7,15 @@
   <Page id="objectPage" showNavButton="true" navButtonPress="onNavBack" title="Timesheet Details">
     <footer>
       <Toolbar id="objectPageFooterToolbar">
+        <Text id="objectPagePoweredByText" text="Powered by" class="tsPoweredByText" />
+        <Image
+          id="objectPagePoweredByLogo"
+          src="{app>/logoUrl}"
+          class="tsPoweredByLogo"
+          alt="On Device Solutions"
+          tooltip="On Device Solutions"
+          decorative="false"
+          densityAware="false" />
         <ToolbarSpacer id="objectPageFooterSpacer" />
         <Button
           id="submitDraftButton"

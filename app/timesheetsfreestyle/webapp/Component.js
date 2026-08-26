@@ -44,6 +44,15 @@ sap.ui.define([
                 companyCode: "ODUK"      // PLACEHOLDER
             }), "userData");
 
+            // Static app-chrome values. logoUrl is resolved through the module path, not
+            // written as a relative src in the views: a relative path resolves against the
+            // page URL and breaks as soon as the app is served from somewhere other than
+            // its own root (an FLP sandbox, a deployed HTML5 repo path). Set once here so
+            // both page footers can bind it instead of each resolving its own.
+            this.setModel(new JSONModel({
+                logoUrl: sap.ui.require.toUrl("timesheetsfreestyle/images/on-device-solutions.gif")
+            }), "app");
+
             // Raw time entries currently loaded in "My Timesheets", shared here so the
             // Object Page can look up a date's logs without a second backend round-trip.
             this.setModel(new JSONModel({ entries: [] }), "timesheetData");

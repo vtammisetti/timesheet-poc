@@ -1,10 +1,9 @@
 <mvc:View
   controllerName="timesheetsfreestyle.controller.TimeEntries"
   xmlns:mvc="sap.ui.core.mvc"
-  xmlns:semantic="sap.m.semantic"
   xmlns="sap.m">
-  <semantic:FullscreenPage id="timesheetFullscreenPage">
-    <semantic:content>
+  <Page id="timesheetFullscreenPage" showHeader="false">
+    <content>
 
       <ObjectHeader
         id="timesheetObjectHeader"
@@ -173,9 +172,21 @@
         </Table>
       </VBox>
 
-    </semantic:content>
-    <semantic:customFooterContent>
-      <Button id="createEntryButton" text="Log Time" type="Emphasized" press="onCreateEntryPress" icon="sap-icon://add"/>
-    </semantic:customFooterContent>
-  </semantic:FullscreenPage>
+    </content>
+    <footer>
+      <OverflowToolbar id="timesheetFooterToolbar">
+        <Text id="poweredByText" text="Powered by" class="tsPoweredByText" />
+        <Image
+          id="poweredByLogo"
+          src="{app>/logoUrl}"
+          class="tsPoweredByLogo"
+          alt="On Device Solutions"
+          tooltip="On Device Solutions"
+          decorative="false"
+          densityAware="false" />
+        <ToolbarSpacer id="timesheetFooterSpacer" />
+        <Button id="createEntryButton" text="Log Time" type="Emphasized" press="onCreateEntryPress" icon="sap-icon://add"/>
+      </OverflowToolbar>
+    </footer>
+  </Page>
 </mvc:View>

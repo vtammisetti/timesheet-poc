@@ -36,3 +36,17 @@ th.tsWeekendCol {
 .sapMInputBase.tsWeekendCol .sapMInputBaseInner {
   background-color: #F2F2F2;
 }
+
+/* "Powered by <logo>" sits at the left of each page's footer toolbar, sharing the row
+   with that page's action button (Log Time / Submit) which a ToolbarSpacer pushes right. */
+.tsPoweredByText {
+  color: #6A6D70;
+  font-size: 0.75rem;
+  margin-right: 0.5rem;
+}
+
+/* Sized by height so the 621x154 source keeps its aspect ratio at any zoom. */
+.tsPoweredByLogo {
+  height: 1.5rem;
+  width: auto;
+}
