@@ -3,7 +3,29 @@
     "allow": [
       "Bash(nohup env CDS_WATCH_OPEN=false npm run watch-timesheetsfreestyle)",
       "Bash(echo \"PID:$!\")",
-      "Bash(lsof -iTCP -sTCP:LISTEN -P)"
+      "Bash(lsof -iTCP -sTCP:LISTEN -P)",
+      "Bash(./node_modules/.bin/cds-serve --port 4004)",
+      "Bash(npm rebuild *)",
+      "Bash(curl -s -X POST http://localhost:4004/odata/v4/timesheet/updateTimeEntry -H 'Content-Type: application/json' -d '{ *)",
+      "Bash(python3 -m json.tool)",
+      "Bash(curl -s -X POST http://localhost:4004/odata/v4/timesheet/deleteTimeEntry -H 'Content-Type: application/json' -d '{ *)",
+      "Bash(curl -s \"http://localhost:4004/odata/v4/timesheet/getMyTimeEntries\\(employeeId='P000023',fromDate=2026-07-16,toDate=2026-07-16\\)\" -H \"Accept: application/json\")",
+      "Bash(curl -sv -X POST http://localhost:4004/odata/v4/timesheet/deleteTimeEntry -H 'Content-Type: application/json' -d '{ *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:4004/timesheetsfreestyle/index.html --max-time 3)",
+      "Bash(python3 -c ' *)",
+      "Bash(curl -s -X POST http://localhost:4004/odata/v4/timesheet/createTimeEntry -H 'Content-Type: application/json' -d '{ *)",
+      "Bash(curl -s \"http://localhost:4004/odata/v4/timesheet/getMyTimeEntries\\(employeeId='P000023',fromDate=2026-07-22,toDate=2026-07-22\\)\" -H \"Accept: application/json\")",
+      "Bash(curl -s -i \"http://localhost:4004/odata/v4/timesheet/getMyTimeEntries\\(employeeId='P000023',fromDate=2026-07-22,toDate=2026-07-22\\)\" -H \"Accept: application/json\" --max-time 10)",
+      "Bash(curl -s -i -X POST http://localhost:4004/odata/v4/timesheet/updateTimeEntry -H 'Content-Type: application/json' -d '{ *)",
+      "Bash(curl -s \"http://localhost:4004/odata/v4/timesheet/getMyTimeEntries\\(employeeId='P000023',fromDate=2026-07-22,toDate=2026-07-22\\)\" -H \"Accept: application/json\" --max-time 10)",
+      "Bash(curl -s -o /dev/null -w \"server: %{http_code}\\\\n\" http://localhost:4004/timesheetsfreestyle/index.html --max-time 5)",
+      "Bash(ps aux | grep -i cds | grep -v grep *)",
+      "Read(//proc/**)",
+      "Bash(node -e ' *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" --max-time 5 http://localhost:4004/timesheetsfreestyle/index.html)",
+      "Bash(chromium-cli --help)",
+      "Read(//extbin/**)",
+      "Bash(find / -iname \"chromium-cli*\" -maxdepth 6)"
     ]
   }
 }

@@ -34,6 +34,24 @@ sap.ui.define([
       this._periodMode = "1W";
       this._periodAnchor = new Date();
       this._loadCurrentPeriod();
+
+      // This view stays alive in the NavContainer once created, so returning to it does
+      // not rebuild anything by itself. Anything that changed an entry while the user
+      // was elsewhere — an approval or rejection on the Approvals screen, most obviously
+      // — would otherwise keep showing its old status until a full page reload. Re-deriving
+      // from the shared models on each route match is local and cheap: no backend read,
+      // and _loadCurrentPeriod is deliberately not called, so the user's chosen period,
+      // facets and search survive the navigation.
+      this.getOwnerComponent().getRouter().getRoute("timeEntries")
+        .attachPatternMatched(this._onRouteMatched, this);
+    },
+
+    _onRouteMatched: function () {
+      // Guard against the very first match, which can arrive before _loadCurrentPeriod
+      // has established the active range that syncFromSharedEntries filters on.
+      if (this._sActiveFromDate) {
+        this.syncFromSharedEntries();
+      }
     },
 
     // Public — called by the App shell's refresh button and after entry submission

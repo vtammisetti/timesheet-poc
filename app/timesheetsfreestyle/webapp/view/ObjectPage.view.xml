@@ -150,6 +150,16 @@
                           type="Transparent"
                           enabled="{objectPage>/deleteEnabled}"
                           press="onDeleteLogPress" />
+                        <!-- Only enabled for a single REJECTED local entry. It replaces
+                             Edit for that row: a rejected entry is read-only until this
+                             puts it back into Draft. -->
+                        <Button
+                          id="resubmitLogButton"
+                          text="Resubmit"
+                          icon="sap-icon://request"
+                          type="Transparent"
+                          enabled="{objectPage>/resubmitEnabled}"
+                          press="onResubmitPress" />
                         <SearchField
                           id="logsSearchField"
                           placeholder="Search entries"
@@ -192,7 +202,26 @@
                           <Text id="logHoursCell" text="{ path: 'objectPage>hours', formatter: '.formatter.normalizeHours' }" />
                           <Text id="logStartTimeCell" text="{ path: 'objectPage>remarks', formatter: '.formatter.parseStartTime' }" />
                           <Text id="logEndTimeCell" text="{ path: 'objectPage>remarks', formatter: '.formatter.parseEndTime' }" />
-                          <Text id="logRemarksCell" text="{ path: 'objectPage>remarks', formatter: '.formatter.cleanRemarks' }" class="sapUiSmallMarginBegin" />
+                          <!-- Rejection reason and S4 record ride along under the note
+                               rather than taking columns of their own: both are set on
+                               only one status each, so dedicated columns would be empty
+                               for nearly every row. Each is bound visible to its own
+                               field, so a row shows whichever (if either) applies. -->
+                          <VBox id="logRemarksBox" class="sapUiSmallMarginBegin">
+                            <Text id="logRemarksCell" text="{ path: 'objectPage>remarks', formatter: '.formatter.cleanRemarks' }" />
+                            <ObjectStatus
+                              id="logRejectionReasonCell"
+                              icon="sap-icon://alert"
+                              state="Error"
+                              text="Rejected: {objectPage>rejectionReason}"
+                              visible="{= !!${objectPage>rejectionReason} }" />
+                            <ObjectStatus
+                              id="logS4RecordCell"
+                              icon="sap-icon://sap-logo-shape"
+                              state="Success"
+                              text="S4 record {objectPage>s4Record}"
+                              visible="{= !!${objectPage>s4Record} }" />
+                          </VBox>
                           <ObjectStatus
                             id="logStatusCell"
                             text="{ path: 'objectPage>status', formatter: '.formatter.formatStatus' }"

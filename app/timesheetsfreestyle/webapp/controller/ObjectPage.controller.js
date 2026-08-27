@@ -57,7 +57,8 @@ sap.ui.define([
         searchQuery: "",
         editEnabled: false,
         deleteEnabled: false,
-        submitEnabled: false
+        submitEnabled: false,
+        resubmitEnabled: false
       });
 
       this._buildLogFacets(aSortedLogs);
@@ -79,8 +80,12 @@ sap.ui.define([
     // and Processed (60) are locked once submitted, editable only while still a
     // Draft. Locked rows get a disabled, pre-checked box (a "finalized" marker, not
     // a real selection); actionable rows start unchecked and interactive.
+    // An APPROVED local row is finalized in exactly the same sense as an S4 Approved
+    // (30) or Processed (60) row: it has been written to the timesheet system and
+    // nothing further can be done to it here, so it gets the same disabled+checked
+    // "finalized" marker rather than being selectable.
     _toSelectableLog: function (oLog) {
-      var bSelectable = !!oLog.isDraft || oLog.status === "20";
+      var bSelectable = (!!oLog.isDraft && oLog.status !== "APPROVED") || oLog.status === "20";
       return Object.assign({}, oLog, {
         selectable: bSelectable,
         selected: !bSelectable
@@ -180,21 +185,39 @@ sap.ui.define([
       return aLogs.filter(function (o) { return o.selectable && o.selected; });
     },
 
+    // isDraft means "this row lives in the local TimeEntries table", not "this row is
+    // editable" — a local row can now be DRAFT, SUBMITTED, APPROVED or REJECTED. So
+    // every action gates on the status as well, not just on isDraft:
+    //   DRAFT     — edit, delete, submit
+    //   SUBMITTED — nothing (it is with the manager; deleting it would strand the
+    //               approval, and editing it would change what is being approved)
+    //   REJECTED  — delete or resubmit, but not edit: it goes back to DRAFT first
+    //   APPROVED  — nothing at all, it has been written to S4 and is audit history
     _updateActionEnablement: function () {
       var aLogs = this._getSelectedLogs();
-      var bAllDrafts = aLogs.length > 0 && aLogs.every(function (o) { return o.isDraft; });
+      var bIsLocal = function (o) { return o.isDraft === true; };
+      var bAllDraftStatus = aLogs.length > 0 && aLogs.every(function (o) {
+        return bIsLocal(o) && o.status === "DRAFT";
+      });
 
       var oModel = this.getView().getModel("objectPage");
       // Edit is Draft-only, full stop — once a log is real (submitted), it's read-only
       // in this app even if S4 itself would still technically allow changing it.
-      oModel.setProperty("/editEnabled", aLogs.length === 1 && aLogs[0].isDraft === true);
-      oModel.setProperty("/deleteEnabled", aLogs.length >= 1);
-      oModel.setProperty("/submitEnabled", bAllDrafts);
+      oModel.setProperty("/editEnabled",
+        aLogs.length === 1 && bIsLocal(aLogs[0]) && aLogs[0].status === "DRAFT");
+      oModel.setProperty("/deleteEnabled", aLogs.length >= 1 && aLogs.every(function (o) {
+        return !bIsLocal(o) || (o.status !== "APPROVED" && o.status !== "SUBMITTED");
+      }));
+      oModel.setProperty("/submitEnabled", bAllDraftStatus);
+      oModel.setProperty("/resubmitEnabled",
+        aLogs.length === 1 && bIsLocal(aLogs[0]) && aLogs[0].status === "REJECTED");
     },
 
     onEditLogPress: function () {
       var aLogs = this._getSelectedLogs();
-      if (aLogs.length !== 1 || !aLogs[0].isDraft) return;
+      // Guard mirrors editEnabled: only a local row still in DRAFT opens the dialog.
+      // A REJECTED row is read-only until Resubmit puts it back into DRAFT.
+      if (aLogs.length !== 1 || !aLogs[0].isDraft || aLogs[0].status !== "DRAFT") return;
       this._openEditDialog(aLogs[0]);
     },
 
@@ -394,110 +417,87 @@ sap.ui.define([
       this._submitDrafts(aDrafts);
     },
 
-    // Pushes each selected draft to S4 via createTimeEntry — the one point where a
-    // draft actually touches the backend. Drafts that succeed are promoted into the
-    // real-entries model (using whatever record id/status S4 handed back); drafts
-    // that fail stay put so the user can retry instead of silently losing the row.
+    // Hands each selected draft to the approval workflow via submitEntry. This no
+    // longer touches S4: submitting only moves the local TimeEntries row from DRAFT to
+    // SUBMITTED, and the real S4 write happens later, once (and only if) a manager
+    // approves it from the Approvals screen. That is why there is no promote-to-real
+    // step here any more — the row stays exactly where it is with a new status. The old
+    // _promoteDraftsToReal helper went with it: promoting on submit would show the entry
+    // as though it had already reached the timesheet system, which is now untrue until
+    // approval, and nothing else called it.
+    //
+    // Each call is independent: submitEntry re-runs the same field validation the
+    // entity's own CREATE/UPDATE hooks apply, so one invalid draft is reported without
+    // stopping the rest, matching how the delete and copyWeek paths already behave.
     _submitDrafts: function (aDrafts) {
       var that = this;
-      var oModel = this.getOwnerComponent().getModel();
+      var oComponent = this.getOwnerComponent();
+      var oModel = oComponent.getModel();
 
       var aCalls = aDrafts.map(function (oDraft) {
-        var oActionBinding = oModel.bindContext("/createTimeEntry(...)");
-        oActionBinding.setParameter("employeeId", oDraft.employeeId);
-        oActionBinding.setParameter("companyCode", oDraft.companyCode);
-        oActionBinding.setParameter("entryDate", oDraft.entryDate);
-        oActionBinding.setParameter("workCenter", oDraft.workCenter);
-        oActionBinding.setParameter("category", oDraft.category);
-        oActionBinding.setParameter("startTime", formatter.parseStartTime(oDraft.remarks));
-        oActionBinding.setParameter("endTime", formatter.parseEndTime(oDraft.remarks));
-        oActionBinding.setParameter("hours", parseFloat(oDraft.hours));
-        oActionBinding.setParameter("remarks", formatter.cleanRemarks(oDraft.remarks));
+        var oActionBinding = oModel.bindContext("/submitEntry(...)");
+        // The local row's own key. _toDraftModelEntry renames ID -> record, so this is
+        // the TimeEntries UUID, not an S4 TimeSheetRecord.
+        oActionBinding.setParameter("ID", oDraft.record);
         return oActionBinding.execute().then(function () {
-          var sResult = oActionBinding.getBoundContext().getProperty("value");
-          return { draft: oDraft, result: sResult };
+          return { draft: oDraft, ok: true };
+        }).catch(function (oError) {
+          return { draft: oDraft, ok: false, message: oComponent.extractODataErrorMessage(oError) };
         });
       });
 
       Promise.all(aCalls).then(function (aOutcomes) {
-        var aFailed = aOutcomes.filter(function (o) { return o.result && o.result.indexOf("ERROR:") === 0; });
-        var aSucceeded = aOutcomes.filter(function (o) { return aFailed.indexOf(o) === -1; });
-
-        // Promotion now includes an async backend DELETE of the just-submitted drafts,
-        // so the UI refresh has to wait for it to settle. Refreshing first would have
-        // _loadDate re-read the "drafts" model before the removal lands, re-rendering
-        // the submitted entry as a Draft right next to its promoted real row.
-        var pPromoted = aSucceeded.length
-          ? that._promoteDraftsToReal(aSucceeded)
-          : Promise.resolve();
+        var aFailed = aOutcomes.filter(function (o) { return !o.ok; });
+        var aSucceeded = aOutcomes.filter(function (o) { return o.ok; });
 
         if (aFailed.length) {
           MessageToast.show(aFailed.length + " of " + aDrafts.length + " draft(s) failed to submit: " +
-            aFailed.map(function (o) { return o.result.replace(/^ERROR:\s*/, ""); }).join("; "), { duration: 6000 });
+            aFailed.map(function (o) { return o.message; }).join("; "), { duration: 6000 });
         } else {
-          MessageToast.show(aSucceeded.length + " draft(s) submitted");
+          MessageToast.show(aSucceeded.length + " draft(s) submitted for approval");
         }
 
-        return pPromoted.then(function () {
+        // Re-read the local entries so the rows pick up their new SUBMITTED status.
+        // Unlike the S4 write path this is a plain local read with no async-visibility
+        // lag, so the refreshed values are already correct.
+        return oComponent._loadDraftsFromBackend().then(function () {
           that._loadDate(that._sCurrentIsoDate);
           that._refreshTimeEntriesList();
         });
       }).catch(function (oError) {
-        MessageToast.show("Submit failed: " + oError.message, { duration: 6000 });
+        MessageToast.show("Submit failed: " + oComponent.extractODataErrorMessage(oError), { duration: 6000 });
         that._loadDate(that._sCurrentIsoDate);
         that._refreshTimeEntriesList();
       });
     },
 
-    // S4's write API is asynchronous (see the edit/delete flows above), so rather than
-    // waiting on a re-fetch, add the newly-created record straight into the shared
-    // real-entries model using the id/status createTimeEntry actually returned, and
-    // drop the now-redundant draft.
-    _promoteDraftsToReal: function (aSucceeded) {
-      var oSharedModel = this.getOwnerComponent().getModel("timesheetData");
-      var aRealEntries = oSharedModel.getProperty("/entries") || [];
-
-      aSucceeded.forEach(function (o) {
-        var oRaw = null;
-        try { oRaw = JSON.parse(o.result).d; } catch (e) { /* fall back to draft values below */ }
-
-        aRealEntries.push({
-          employeeId: o.draft.employeeId,
-          companyCode: o.draft.companyCode,
-          entryDate: o.draft.entryDate,
-          status: (oRaw && oRaw.TimeSheetStatus) || "20",
-          workCenter: o.draft.workCenter,
-          category: o.draft.category,
-          hours: o.draft.hours,
-          remarks: o.draft.remarks,
-          record: (oRaw && oRaw.TimeSheetRecord) || o.draft.record
-        });
+    // Resubmit puts a REJECTED entry back into the employee's hands as a plain DRAFT.
+    // No new backend action is needed: it is an ordinary PATCH of status on the
+    // TimeEntries entity, which re-runs the existing validateEntryFields UPDATE hook in
+    // partial mode — that only validates fields actually present in the payload, so a
+    // status-only patch passes without needing to resend the whole entry.
+    //
+    // rejectionReason is cleared in the same patch: leaving the old reason behind would
+    // keep showing a stale rejection against a row that is now an ordinary draft.
+    onResubmitPress: function () {
+      var that = this;
+      var aLogs = this._getSelectedLogs().filter(function (o) {
+        return o.isDraft && o.status === "REJECTED";
       });
+      if (aLogs.length !== 1) return;
 
-      oSharedModel.setProperty("/entries", aRealEntries);
-
-      // Returns a promise so the caller can hold the UI refresh until the drafts are
-      // actually gone — otherwise the submitted entry renders twice, once as its new
-      // real row and once as the not-yet-removed draft.
-      //
-      // The S4 submit already succeeded by this point — a failed local-draft-delete
-      // here is a cleanup problem, not a submit failure, so it must never be presented
-      // to the user as if the submit itself failed (that would be misleading and could
-      // prompt a duplicate resubmit). Log it and move on; the stale draft can be
-      // deleted manually, and _loadDraftsFromBackend will keep showing it until then.
-      // Deliberately never rejects, for the same reason.
-      return this.getOwnerComponent().removeDraftEntries(aSucceeded.map(function (o) { return o.draft.record; }))
-        .then(function (oResult) {
-          if (oResult.failed.length) {
-            // eslint-disable-next-line no-console
-            console.warn(oResult.failed.length + " submitted draft(s) failed to clean up locally " +
-              "after a successful S4 submit — they'll still show as drafts until deleted manually.",
-              oResult.failed);
-          }
+      var oComponent = this.getOwnerComponent();
+      oComponent.updateDraftEntry(aLogs[0].record, { status: "DRAFT", rejectionReason: "" })
+        .then(function () {
+          MessageToast.show("Entry moved back to Draft — edit it and submit again.");
+          return oComponent._loadDraftsFromBackend();
+        })
+        .then(function () {
+          that._loadDate(that._sCurrentIsoDate);
+          that._refreshTimeEntriesList();
         })
         .catch(function (oError) {
-          // eslint-disable-next-line no-console
-          console.warn("Draft cleanup after a successful S4 submit failed:", oError);
+          MessageToast.show("Could not resubmit: " + oError.message, { duration: 6000 });
         });
     },
 

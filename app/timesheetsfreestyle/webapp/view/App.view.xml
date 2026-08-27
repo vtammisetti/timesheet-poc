@@ -45,7 +45,8 @@
     <tnt:sideContent>
       <tnt:SideNavigation id="sideNav" expanded="true" selectedKey="myTimesheets" itemSelect="onNavItemSelect">
         <tnt:NavigationList>
-          <tnt:NavigationListItem text="My Timesheets" key="myTimesheets" icon="sap-icon://timesheet" />
+          <tnt:NavigationListItem id="navItemMyTimesheets" text="My Timesheets" key="myTimesheets" icon="sap-icon://timesheet" />
+          <tnt:NavigationListItem id="navItemApprovals" text="Approvals" key="approvals" icon="sap-icon://approvals" />
         </tnt:NavigationList>
         <tnt:fixedItem>
           <tnt:NavigationList>

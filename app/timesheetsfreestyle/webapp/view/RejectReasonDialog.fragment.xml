@@ -1,0 +1,59 @@
+<core:FragmentDefinition
+  xmlns="sap.m"
+  xmlns:core="sap.ui.core"
+  xmlns:f="sap.ui.layout.form">
+  <Dialog
+    id="rejectReasonDialog"
+    title="Reject Entry"
+    contentWidth="32rem"
+    horizontalScrolling="false"
+    busyIndicatorDelay="0"
+    busy="{rejectDialog>/busy}">
+    <content>
+      <f:SimpleForm
+        id="rejectReasonForm"
+        editable="true"
+        layout="ResponsiveGridLayout"
+        columnsXL="1" columnsL="1" columnsM="1"
+        labelSpanXL="12" labelSpanL="12" labelSpanM="12" labelSpanS="12"
+        adjustLabelSpan="false">
+        <f:content>
+          <!-- Shows which entry is being rejected, so the reason is never typed against
+               the wrong row once the dialog covers the table. -->
+          <Label id="rejectEntryLabel" text="Entry" />
+          <Text id="rejectEntrySummary" text="{rejectDialog>/entrySummary}" />
+
+          <Label id="rejectReasonLabel" text="Reason for rejection" required="true" />
+          <TextArea
+            id="rejectReasonTextArea"
+            value="{rejectDialog>/reason}"
+            liveChange="onRejectReasonChange"
+            placeholder="Tell the employee what to correct"
+            rows="4"
+            growing="false"
+            width="100%" />
+        </f:content>
+      </f:SimpleForm>
+
+      <MessageStrip
+        id="rejectReasonInfoStrip"
+        text="The entry goes back to the employee with this reason. Nothing is written to your timesheet system."
+        type="Information"
+        showIcon="true"
+        class="sapUiSmallMarginBeginEnd sapUiSmallMarginBottom" />
+    </content>
+    <beginButton>
+      <!-- Kept disabled until the reason is non-blank, which is also what the backend
+           enforces (rejectEntry rejects a blank reason with a 400). -->
+      <Button
+        id="confirmRejectButton"
+        text="Reject"
+        type="Reject"
+        enabled="{= !!${rejectDialog>/reason} &amp;&amp; ${rejectDialog>/reason}.trim() !== '' }"
+        press="onConfirmReject" />
+    </beginButton>
+    <endButton>
+      <Button id="cancelRejectButton" text="Cancel" press="onCancelRejectDialog" />
+    </endButton>
+  </Dialog>
+</core:FragmentDefinition>

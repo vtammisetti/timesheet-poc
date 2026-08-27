@@ -62,8 +62,16 @@ sap.ui.define([
     },
 
     onNavItemSelect: function (oEvent) {
-      if (oEvent.getParameter("item").getKey() === "myTimesheets") {
-        this.getOwnerComponent().getRouter().navTo("timeEntries");
+      // One route per nav key. Approvals is always visible: there is no role check
+      // anywhere in this POC (the backend deliberately has none either), so the item
+      // is not gated on the signed-in identity.
+      var mRouteByKey = {
+        myTimesheets: "timeEntries",
+        approvals: "approvals"
+      };
+      var sRoute = mRouteByKey[oEvent.getParameter("item").getKey()];
+      if (sRoute) {
+        this.getOwnerComponent().getRouter().navTo(sRoute);
       }
     }
   });

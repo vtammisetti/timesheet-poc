@@ -1,0 +1,106 @@
+<mvc:View
+  controllerName="timesheetsfreestyle.controller.Approvals"
+  xmlns:mvc="sap.ui.core.mvc"
+  xmlns="sap.m">
+  <Page id="approvalsPage" showHeader="false">
+    <content>
+
+      <ObjectHeader
+        id="approvalsObjectHeader"
+        title="Approvals"
+        icon="sap-icon://approvals"
+        responsive="true">
+        
+      </ObjectHeader>
+
+      <VBox id="approvalsContentVBox" class="sapUiResponsiveContentPadding">
+
+        <!-- <MessageStrip
+          id="approvalsScopeStrip"
+          text="Showing every entry submitted for approval, across all employees. This POC has no manager-to-employee mapping."
+          type="Information"
+          showIcon="true"
+          class="sapUiSmallMarginBottom" /> -->
+
+        <Table
+          id="approvalsTable"
+          items="{approvals>/entries}"
+          busy="{approvals>/busy}"
+          noDataText="Nothing is waiting for approval.">
+          <headerToolbar>
+            <OverflowToolbar id="approvalsTableToolbar">
+              <Title id="approvalsTableTitle" text="Pending Approval ({approvals>/count})" />
+              <ToolbarSpacer id="approvalsTableToolbarSpacer" />
+              <!-- <Button
+                id="approvalsRefreshButton"
+                text="Refresh"
+                icon="sap-icon://synchronize"
+                type="Transparent"
+                press="onRefreshApprovals" /> -->
+            </OverflowToolbar>
+          </headerToolbar>
+          <columns>
+            <!-- Explicit widths for the same reason as the log table in ObjectPage.view.xml:
+                 sap.m.Table defaults to fixedLayout="true", so any column without one just
+                 takes an equal share. Remarks is left width-less to absorb the remainder. -->
+            <Column id="approvalEmployeeCol" width="8rem"><Text id="approvalEmployeeColTitle" text="Employee" /></Column>
+            <Column id="approvalDateCol" width="10rem"><Text id="approvalDateColTitle" text="Date" /></Column>
+            <Column id="approvalWorkCenterCol" width="9rem"><Text id="approvalWorkCenterColTitle" text="Work Center" /></Column>
+            <Column id="approvalCategoryCol" width="7rem"><Text id="approvalCategoryColTitle" text="Category" /></Column>
+            <Column id="approvalHoursCol" width="6rem" hAlign="End"><Text id="approvalHoursColTitle" text="Hours" /></Column>
+            <Column id="approvalRemarksCol"><Text id="approvalRemarksColTitle" text="Remarks" class="sapUiSmallMarginBegin" /></Column>
+            <Column id="approvalActionsCol" width="14rem"><Text id="approvalActionsColTitle" text="Decision" /></Column>
+          </columns>
+          <items>
+            <ColumnListItem id="approvalListItem">
+              <cells>
+                <Text id="approvalEmployeeCell" text="{approvals>employeeId}" />
+                <Text id="approvalDateCell" text="{ path: 'approvals>entryDate', formatter: '.formatter.formatDate' }" />
+                <Text id="approvalWorkCenterCell" text="{approvals>workCenter}" />
+                <Text id="approvalCategoryCell" text="{approvals>category}" />
+                <Text id="approvalHoursCell" text="{ path: 'approvals>hours', formatter: '.formatter.normalizeHours' }" />
+                <Text id="approvalRemarksCell" text="{ path: 'approvals>remarks', formatter: '.formatter.cleanRemarks' }" class="sapUiSmallMarginBegin" />
+
+                <!-- Only the two decisions are offered here. Reject opens the reason
+                     dialog (RejectReasonDialog.fragment.xml) rather than taking the text
+                     inline, so the row stays readable and the reason is captured against
+                     one clearly identified entry. -->
+                <HBox id="approvalActionsBox" alignItems="Center" renderType="Bare">
+                  <Button
+                    id="approveEntryButton"
+                    text="Approve"
+                    icon="sap-icon://accept"
+                    type="Accept"
+                    press="onApprovePress" />
+                  <Button
+                    id="rejectEntryButton"
+                    text="Reject"
+                    icon="sap-icon://decline"
+                    type="Reject"
+                    press="onRejectPress"
+                    class="sapUiTinyMarginBegin" />
+                </HBox>
+              </cells>
+            </ColumnListItem>
+          </items>
+        </Table>
+
+      </VBox>
+    </content>
+
+    <footer>
+      <OverflowToolbar id="approvalsFooterToolbar">
+        <Text id="approvalsPoweredByText" text="Powered by" class="tsPoweredByText" />
+        <Image
+          id="approvalsPoweredByLogo"
+          src="{app>/logoUrl}"
+          class="tsPoweredByLogo"
+          alt="On Device Solutions"
+          tooltip="On Device Solutions"
+          decorative="false"
+          densityAware="false" />
+        <ToolbarSpacer id="approvalsFooterSpacer" />
+      </OverflowToolbar>
+    </footer>
+  </Page>
+</mvc:View>

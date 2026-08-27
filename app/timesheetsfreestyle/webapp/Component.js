@@ -13,7 +13,7 @@ sap.ui.define([
     // autoExpandSelect: true (manifest.json), which normally derives $select from the
     // control bindings attached to a request; these requests aren't attached to any
     // control, so without an explicit $select they could come back with just the key.
-    var DRAFT_SELECT = "ID,employeeId,companyCode,entryDate,workCenter,category,hours,remarks,status";
+    var DRAFT_SELECT = "ID,employeeId,companyCode,entryDate,workCenter,category,hours,remarks,status,rejectionReason,s4Record";
 
     return UIComponent.extend("timesheetsfreestyle.Component", {
         metadata: {
@@ -43,6 +43,20 @@ sap.ui.define([
                 employeeId: "P000023",   // PLACEHOLDER //P000136
                 companyCode: "ODUK"      // PLACEHOLDER
             }), "userData");
+
+            // Cosmetic only. The approval backend takes no manager parameter and does no
+            // manager/employee access check (a documented, intentional simplification in
+            // srv/timesheet-service.js), so nothing functional reads this — it exists so
+            // the Approvals screen can show who is acting, mirroring the userData pattern
+            // above. Replace alongside the employeeId placeholder when real identity lands.
+            this.setModel(new JSONModel({
+                FirstName: "Zeeshan",
+                SecondName: "Ahmed",
+
+                Role: "Manager",
+                name: "Zeeshan Ahmed",
+                email: "zahmed@ondevicesolutions.com"
+            }), "managerData");
 
             // Static app-chrome values. logoUrl is resolved through the module path, not
             // written as a relative src in the views: a relative path resolves against the
@@ -80,6 +94,13 @@ sap.ui.define([
             };
         },
 
+        // Cosmetic counterpart to getCurrentUser — see the managerData model above.
+        // Deliberately exposes no id: no approval call takes one.
+        getCurrentManager() {
+            var oData = this.getModel("managerData").getData();
+            return { name: oData.name, email: oData.email, role: oData.Role };
+        },
+
         // The backend entity's key is "ID" (server-assigned UUID), but every consumer in
         // this app — sorting, edit/delete/submit in both controllers — reads a uniform
         // "record" field across real (S4) and draft entries alike, since S4's
@@ -101,10 +122,16 @@ sap.ui.define([
             return oEntry;
         },
 
+        // Loads every local TimeEntries row for this employee, whatever its status.
+        // This used to filter status EQ 'DRAFT', which was right when DRAFT was the only
+        // value the entity ever held. Now that submit/approve/reject move a row through
+        // SUBMITTED -> APPROVED/REJECTED without deleting it, filtering on DRAFT would
+        // make an entry vanish from the user's own timesheet the moment they submitted
+        // it. The model name stays "drafts" (every consumer reads it) but it is now the
+        // employee's full set of local entries; status is what distinguishes them.
         _loadDraftsFromBackend() {
             var oUser = this.getCurrentUser();
             var oListBinding = this.getModel().bindList("/TimeEntries", undefined, undefined, [
-                new Filter("status", FilterOperator.EQ, "DRAFT"),
                 new Filter("employeeId", FilterOperator.EQ, oUser.employeeId)
             ], {
                 $select: DRAFT_SELECT

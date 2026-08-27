@@ -111,4 +111,28 @@ action copyWeek(
   };
 };
 
+//----------------------------------------------------------------------------------
+// Local approval workflow. S/4's API_MANAGE_WORKFORCE_TIMESHEET has no approval
+// mechanism of its own (it only exposes create/update/delete via TimeSheetOperation),
+// so the whole DRAFT -> SUBMITTED -> APPROVED/REJECTED lifecycle lives here, on the
+// local TimeEntries. The S4 write is no longer done when the employee submits — it
+// happens once, inside approveEntry, and only if the manager approves.
+//----------------------------------------------------------------------------------
+
+//submitEntry hands a DRAFT entry to the manager: it validates the row and flips it to
+//SUBMITTED. Deliberately does NOT touch S4.
+action submitEntry(ID : UUID) returns TimeEntries;
+
+//approveEntry is the only path that writes an entry to S4. On a successful write the
+//local row is kept as audit history with status APPROVED and the returned
+//TimeSheetRecord in s4Record; on failure the row stays SUBMITTED and the S4 error is raised.
+action approveEntry(ID : UUID) returns TimeEntries;
+
+//rejectEntry sends a SUBMITTED entry back with a mandatory reason. Nothing goes to S4.
+action rejectEntry(ID : UUID, reason : String) returns TimeEntries;
+
+//getEntriesForApproval lists everything awaiting approval. Intentionally unfiltered by
+//manager for now — there is no role/manager mapping in this POC yet.
+function getEntriesForApproval() returns array of TimeEntries;
+
 }

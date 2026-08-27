@@ -82,14 +82,12 @@
         }
       ]
     },
-
     "rootView": {
       "viewName": "timesheetsfreestyle.view.App",
       "type": "XML",
       "id": "App",
       "async": true
     },
-
     "routing": {
       "config": {
         "routerClass": "sap.m.routing.Router",
@@ -110,6 +108,11 @@
           "pattern": "objectPage/{date}",
           "name": "objectPage",
           "target": "objectPage"
+        },
+        {
+          "pattern": "approvals",
+          "name": "approvals",
+          "target": "approvals"
         }
       ],
       "targets": {
@@ -120,6 +123,10 @@
         "objectPage": {
           "viewName": "ObjectPage",
           "viewId": "objectPage"
+        },
+        "approvals": {
+          "viewName": "Approvals",
+          "viewId": "approvals"
         }
       }
     }

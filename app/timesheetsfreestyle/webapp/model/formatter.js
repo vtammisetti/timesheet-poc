@@ -29,9 +29,17 @@ sap.ui.define([], function () {
       return oDate.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
     },
 
+    // Two different status vocabularies share these maps. The numeric codes (20/30/60)
+    // are S4's own TimeSheetStatus, carried on entries read back from S4. The word
+    // codes are the local TimeEntries.status lifecycle (db/schema.cds): DRAFT ->
+    // SUBMITTED -> APPROVED, or SUBMITTED -> REJECTED. They never collide, so one
+    // lookup serves both and the log table can render either kind of row unchanged.
     formatStatus: function (sStatusCode) {
       var mStatusMap = {
         "DRAFT": "Draft",
+        "SUBMITTED": "Submitted for Approval",
+        "APPROVED": "Approved",
+        "REJECTED": "Rejected",
         "20": "Sent for Approval",
         "30": "Approved",
         "60": "Processed"
@@ -42,6 +50,9 @@ sap.ui.define([], function () {
     statusState: function (sStatusCode) {
       var mStateMap = {
         "DRAFT": "Information",
+        "SUBMITTED": "Warning",
+        "APPROVED": "Success",
+        "REJECTED": "Error",
         "20": "Warning",
         "30": "Success",
         "60": "Warning"
@@ -106,11 +117,26 @@ sap.ui.define([], function () {
       if (aLogs.some(function (e) { return e.status === "DRAFT"; })) {
         return "DRAFT";
       }
+      // A rejection is the other state that needs the user to do something, so it
+      // outranks everything except a Draft. Added with the local approval lifecycle;
+      // the S4-only branches below are unchanged and still decide any day whose logs
+      // carry only numeric codes.
+      if (aLogs.some(function (e) { return e.status === "REJECTED"; })) {
+        return "REJECTED";
+      }
       if (aLogs.some(function (e) { return e.status === "60"; })) {
         return "60";
       }
+      // Checked before the numeric all-Approved test: a day of locally-approved entries
+      // would otherwise fall through to "20" and read as still awaiting approval.
+      if (aLogs.every(function (e) { return e.status === "APPROVED"; })) {
+        return "APPROVED";
+      }
       if (aLogs.every(function (e) { return e.status === "30"; })) {
         return "30";
+      }
+      if (aLogs.some(function (e) { return e.status === "SUBMITTED"; })) {
+        return "SUBMITTED";
       }
       return "20";
     }

@@ -35,6 +35,54 @@ async function postToS4(payload) {
   return postResp.data;
 }
 
+// The create-side S4 write, lifted out of createTimeEntry's handler so approveEntry can
+// perform the identical write instead of keeping a second copy that could drift: same
+// [TSAPP_START:...|TSAPP_END:...] remarks tag convention, same TimeSheetOperation 'C'
+// payload, same CSRF-protected POST. Callers that already carry the time tag inside
+// remarks (the local TimeEntries rows do — the UI writes it there) simply pass no
+// startTime/endTime and the remarks string is sent through untouched.
+async function createEntryInS4({
+  employeeId, companyCode, entryDate,
+  workCenter, category, startTime, endTime,
+  hours, remarks
+}) {
+  const epochMs = Date.UTC(
+    ...(toDateString(entryDate) || String(entryDate))
+      .split('-').map((v, i) => i === 1 ? Number(v) - 1 : Number(v))
+  );
+
+  const timeTag = (startTime && endTime)
+    ? `[TSAPP_START:${startTime}|TSAPP_END:${endTime}] `
+    : '';
+  const note = `${timeTag}${remarks || ''}`.trim();
+
+  const payload = {
+    PersonWorkAgreementExternalID: employeeId,
+    CompanyCode: companyCode,
+    TimeSheetDate: `/Date(${epochMs})/`,
+    TimeSheetOperation: 'C',
+    TimeSheetIsExecutedInTestRun: false,
+    TimeSheetDataFields: {
+      ReceiverCostCenter: workCenter,
+      TimeSheetTaskType: category,
+      TimeSheetTaskLevel: 'NONE',
+      TimeSheetTaskComponent: 'WORK',
+      RecordedHours: Number(hours).toFixed(2),
+      HoursUnitOfMeasure: 'H',
+      ReceiverPubSecFuncnlArea: 'YB25',
+      TimeSheetNote: note
+    }
+  };
+
+  return postToS4(payload);
+}
+
+// The created record's key comes back wrapped in OData v2's { d: { ... } } envelope;
+// unwrap defensively so a shape change surfaces as an empty s4Record, not a crash.
+function s4RecordOf(data) {
+  return data?.d?.TimeSheetRecord || data?.TimeSheetRecord || null;
+}
+
 // Business-rule validation shared by the local TimeEntries draft writes and the
 // S4-bound createTimeEntry/updateTimeEntry actions, so a rule can't drift between
 // the two paths. Field names match db/schema.cds TimeEntries and the action
@@ -197,34 +245,11 @@ module.exports = cds.service.impl(async function () {
     }
 
     try {
-      const epochMs = Date.UTC(
-        ...entryDate.split('-').map((v, i) => i === 1 ? Number(v) - 1 : Number(v))
-      );
-
-      const timeTag = (startTime && endTime)
-        ? `[TSAPP_START:${startTime}|TSAPP_END:${endTime}] `
-        : '';
-      const note = `${timeTag}${remarks || ''}`.trim();
-
-      const payload = {
-        PersonWorkAgreementExternalID: employeeId,
-        CompanyCode: companyCode,
-        TimeSheetDate: `/Date(${epochMs})/`,
-        TimeSheetOperation: 'C',
-        TimeSheetIsExecutedInTestRun: false,
-        TimeSheetDataFields: {
-          ReceiverCostCenter: workCenter,
-          TimeSheetTaskType: category,
-          TimeSheetTaskLevel: 'NONE',
-          TimeSheetTaskComponent: 'WORK',
-          RecordedHours: Number(hours).toFixed(2),
-          HoursUnitOfMeasure: 'H',
-          ReceiverPubSecFuncnlArea: 'YB25',
-          TimeSheetNote: note
-        }
-      };
-
-      const data = await postToS4(payload);
+      const data = await createEntryInS4({
+        employeeId, companyCode, entryDate,
+        workCenter, category, startTime, endTime,
+        hours, remarks
+      });
       return JSON.stringify(data);
 
     } catch (err) {
@@ -326,16 +351,35 @@ module.exports = cds.service.impl(async function () {
     // TimeSheetEntryCollection has no real update/delete: updateTimeEntry and
     // deleteTimeEntry both create a new record linked back via
     // TimeSheetPredecessorRecord, and the original is left in the collection
-    // unchanged. So a record is "live" only if nothing points back to it — anything
-    // that's someone else's predecessor is a stale version and must be hidden. A
-    // live record with 0 hours is itself the tombstone left behind by a delete, so
-    // its whole chain is dropped too.
-
-    // Build a set of all predecessor records, then filter out any record that is in that set.
+    // unchanged.
+    //
+    // Scanning those predecessor links is NOT enough on its own, and this is the
+    // subtle part: S4 does not return deletion documents in this collection at all.
+    // A delete's successor (0 recorded hours, TimeSheetPredecessorRecord pointing at
+    // the entry it removes) is reachable by key, but the feed omits it — even a
+    // $filter on that record's own key comes back empty, and it is not a paging or
+    // $top artefact (an explicit $top=1000 returns the server's complete set with no
+    // next-link). So nothing in the feed ever points back at a deleted entry, the
+    // link scan below can never mark it superseded, and it used to keep showing as if
+    // it still existed. Updates are unaffected: their successor carries real hours and
+    // does appear, which is why edits looked correct while deletes did not.
+    //
+    // What IS visible for both cases is TimeSheetStatus: S4 flips a record to '60'
+    // when it stops being current — whether it was superseded by an edit or removed by
+    // a delete — and the record that is actually live carries '30'. Verified against
+    // every record of this employee (157 records read back by key, including the
+    // deletion documents the feed hides): no '60' record lacked a successor, and no
+    // '30' record was superseded or deleted. Note this is CATS-style status, so if this
+    // tenant ever starts transferring approved time onward to payroll, '60' would also
+    // mean "processed" and this rule would need revisiting.
+    //
+    // The predecessor scan and the 0-hour check are kept as belt-and-braces: they are
+    // subsets of the status rule for every record observed here, and cost nothing.
     const supersededRecords = new Set(
       result.map(r => r.TimeSheetPredecessorRecord).filter(Boolean)
     );
     const liveRecords = result
+      .filter(r => r.TimeSheetStatus === '30')
       .filter(r => !supersededRecords.has(r.TimeSheetRecord))
       .filter(r => Number(r.TimeSheetDataFields?.RecordedHours) > 0);
 
@@ -483,6 +527,114 @@ module.exports = cds.service.impl(async function () {
     }
 
     return { created, skipped };
+  });
+
+  //--------------------------------------------------------------------------------
+  // Approval workflow. S4 has no approval concept of its own, so the lifecycle is
+  // entirely local: DRAFT -> SUBMITTED -> APPROVED (the only point at which anything
+  // is written to S4) or SUBMITTED -> REJECTED. Approved rows are KEPT here as audit
+  // history — unlike the old submit-and-forget flow, nothing is deleted on success.
+  //--------------------------------------------------------------------------------
+
+  // Shared lookup for the three ID-driven actions: raises 404 and returns undefined if
+  // the row is gone, so each handler can bail out on a falsy result.
+  async function loadEntry(req) {
+    const { ID } = req.data;
+    if (!ID) {
+      req.error(400, 'ID is required.');
+      return;
+    }
+    const oEntry = await SELECT.one.from('TimeEntries').where({ ID });
+    if (!oEntry) {
+      req.error(404, `Time entry ${ID} was not found.`);
+      return;
+    }
+    return oEntry;
+  }
+
+  // submitEntry validates the draft as it currently stands and hands it to the manager.
+  // The S4 POST that used to happen at this moment now happens on approval instead —
+  // this handler deliberately never touches S4.
+  this.on('submitEntry', async (req) => {
+    const oEntry = await loadEntry(req);
+    if (!oEntry) return;
+
+    if (oEntry.status !== 'DRAFT') {
+      return req.error(400, 'Only draft entries can be submitted.');
+    }
+
+    // Same rules as the CREATE/UPDATE hooks and the S4-bound actions — reused, not
+    // restated, so a draft can never reach a manager under weaker validation than a
+    // direct write would have faced.
+    const aErrors = validateEntryFields(oEntry, false);
+    if (aErrors.length > 0) {
+      return req.error(400, aErrors.join(' '));
+    }
+
+    await UPDATE('TimeEntries').set({ status: 'SUBMITTED' }).where({ ID: oEntry.ID });
+    return SELECT.one.from('TimeEntries').where({ ID: oEntry.ID });
+  });
+
+  // approveEntry is the one place an entry reaches S4. The local row is only marked
+  // APPROVED after S4 has accepted the write and given back a TimeSheetRecord.
+  this.on('approveEntry', async (req) => {
+    const oEntry = await loadEntry(req);
+    if (!oEntry) return;
+
+    if (oEntry.status !== 'SUBMITTED') {
+      return req.error(400, 'Only submitted entries can be approved.');
+    }
+
+    let oS4Response;
+    try {
+      // remarks already carries the [TSAPP_START:...|TSAPP_END:...] tag if the entry
+      // has times on it, so no startTime/endTime is passed — createEntryInS4 sends the
+      // stored remarks through as-is rather than tagging it twice.
+      oS4Response = await createEntryInS4(oEntry);
+    } catch (err) {
+      // The row stays SUBMITTED: a failed approval must not look approved, and must
+      // stay approvable once whatever S4 objected to is fixed.
+      return req.error(502, `Approval failed, the entry was not written to S4 and remains submitted: ${s4ErrorMessage(err)}`);
+    }
+
+    const sRecord = s4RecordOf(oS4Response);
+    if (!sRecord) {
+      return req.error(502, `S4 accepted the write but returned no TimeSheetRecord, the entry remains submitted: ${JSON.stringify(oS4Response)}`);
+    }
+
+    await UPDATE('TimeEntries')
+      .set({ status: 'APPROVED', s4Record: sRecord })
+      .where({ ID: oEntry.ID });
+
+    return SELECT.one.from('TimeEntries').where({ ID: oEntry.ID });
+  });
+
+  // rejectEntry sends the entry back to the employee with a mandatory reason. It stops
+  // at REJECTED on purpose — the return to DRAFT happens when the employee edits it.
+  this.on('rejectEntry', async (req) => {
+    const oEntry = await loadEntry(req);
+    if (!oEntry) return;
+
+    if (oEntry.status !== 'SUBMITTED') {
+      return req.error(400, 'Only submitted entries can be rejected.');
+    }
+
+    const { reason } = req.data;
+    if (!reason || typeof reason !== 'string' || !reason.trim()) {
+      return req.error(400, 'A rejection reason is required.');
+    }
+
+    await UPDATE('TimeEntries')
+      .set({ status: 'REJECTED', rejectionReason: reason.trim() })
+      .where({ ID: oEntry.ID });
+
+    return SELECT.one.from('TimeEntries').where({ ID: oEntry.ID });
+  });
+
+  // Everything waiting for a decision, across all employees: there is no role or
+  // manager-to-employee mapping in this POC yet, so this is intentionally unfiltered.
+  this.on('getEntriesForApproval', async () => {
+    return SELECT.from('TimeEntries').where({ status: 'SUBMITTED' });
   });
 
 });
